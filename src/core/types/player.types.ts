@@ -16,11 +16,18 @@ export interface PlayerStats {
   tiltResistance: number;
 }
 
+export const RARITY_CAPS: Record<PlayerRarity, number> = {
+  bronze: 70,
+  silver: 80,
+  gold: 90,
+  diamond: 98,
+};
+
 export interface ProPlayer {
   id: string;
   name: string;
   handle: string;
-  avatar: string;
+  portraitIndex: number;
   discipline: EsportsDiscipline;
   rarity: PlayerRarity;
   role: PlayerRole;
@@ -28,4 +35,6 @@ export interface ProPlayer {
   stats: PlayerStats;
   salaryPerSec: number;
   isTraining?: boolean;
+  trainingProgress?: Partial<PlayerStats>;
 }
+

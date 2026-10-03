@@ -9,7 +9,6 @@ describe('useGameStore', () => {
       hype: 10,
       energyCans: 5,
       lifetimeEarnings: 100,
-      tapPower: 2,
       boostExpiresAt: 0,
       dailyAdsWatched: 0,
     });
@@ -76,17 +75,30 @@ describe('useGameStore', () => {
     expect(useGameStore.getState().cash).toBe(1000);
   });
 
-  it('increments cash when tapping scrim', () => {
-    const earned = useGameStore.getState().tapScrim();
-    expect(earned).toBe(2);
-    expect(useGameStore.getState().cash).toBe(102);
+  it('earns automatically without player interaction', () => {
+    useGameStore.setState({ lastSavedTimestamp: 1000 });
+    useGameStore.getState().tick(11000);
+    expect(useGameStore.getState().cash).toBeCloseTo(110.1);
+    expect(useGameStore.getState()).not.toHaveProperty('tapScrim');
   });
 
-  it('doubles tap earnings when 2x ad boost is active', () => {
-    useGameStore.setState({ boostExpiresAt: Date.now() + 10000 });
-    const earned = useGameStore.getState().tapScrim();
-    expect(earned).toBe(4);
-    expect(useGameStore.getState().cash).toBe(104);
+  it('gives new recruits distinct generated portraits until the catalog is used', () => {
+    for (let i = 0; i < 5; i++) useGameStore.getState().scoutPlayer(true);
+    expect(new Set(useGameStore.getState().roster.map(p => p.portraitIndex)).size).toBe(6);
+  });
+
+  it('upgrades a legacy save without losing progress or retaining tap mechanics', async () => {
+    const initial = useGameStore.getState();
+    localStorage.setItem('esports_dynasty_save_v1', JSON.stringify({ version: 1, state: {
+      cash: 1234, tapPower: 2, roster: [{ ...initial.roster[0], portraitIndex: undefined, avatar: 'https://old.example/player.png' }],
+    } }));
+    await useGameStore.persist.rehydrate();
+    const updated = useGameStore.getState();
+    expect(updated.cash).toBe(1234);
+    expect(updated.roster[0].portraitIndex).toBe(0);
+    expect(updated.roster[0].stats).toEqual(initial.roster[0].stats);
+    expect(updated.roster[0]).not.toHaveProperty('avatar');
+    expect(updated).not.toHaveProperty('tapPower');
   });
 
   it('adds boost hours correctly up to 8 hours maximum', () => {

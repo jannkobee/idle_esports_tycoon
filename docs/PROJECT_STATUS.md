@@ -1,10 +1,20 @@
-﻿# Implementation status
+# Implementation status
 
 Reviewed October 4, 2026.
 
 ## Current prototype
 
-Facilities, tapping, persistent economy, instant stat training, genre-specific scouting, simplified best-of-three tournaments, five-second mock ads, offline rewards, sponsor drones, and daily sponsor payouts.
+Facilities, an automatic team room with visible generated players, persistent economy, instant stat training, genre-specific scouting, simplified best-of-three tournaments, five-second mock ads, offline rewards, sponsor drones, and daily sponsor payouts.
+
+## Player-first idle direction
+
+The cash-tapping mechanic has been removed from the UI and store. Headquarters is now a playable React Three Fiber cutaway house: scrim lab, streaming studio, analyst room, gym, and merch shop, with 3D furniture, windows, lights, and moving roster characters. Locked rooms remain furnished and marked locked. Selecting a room opens its real upgrade/unlock controls. Scrim monitors change color at level 5. Drag to pan, use zoom/reset controls, and select characters to inspect their stats.
+
+Up to six actual roster members appear per squad view, using small illustrated human characters matched to their portrait appearance. They alternate between practice and a continuous hallway walk; larger rosters have a squad switcher. Two decorative staff characters are labeled coach and house manager, not added to the roster. The house movement is ambient presentation, not a training or match simulation. Income is still credited by the existing economy tick. Pause controls and reduced-motion preferences stop scene animation without stopping income.
+
+Scouts receive unused appearances until all six are represented, then reuse the artwork with separately generated IDs and stats. The roster and inspector retain the six locally bundled AI-generated portraits; the house uses procedural 3D geometry and simple animated characters. This is a finite character-art catalog, not on-demand generation for every recruit or a 3D skeletal animation engine. Old saves receive stable portraits and discard obsolete tap fields and external avatar URLs without resetting progress.
+
+The 3D house is a first playable visual implementation using code-built models. Authored 3D assets, richer character animation, free furniture placement, and building expansion remain future work.
 
 Daily payouts match the Sponsors UI: 1 ad grants 5 Energy Cans; 3 ads grant $5,000 and two extra boost hours; 5 ads grant $50,000. These are prototype values, differing from the strategy document's crates and 4x boost. Payouts are automatic and reset at midnight UTC.
 
@@ -32,7 +42,7 @@ The store is unified, not split into slices. Ads are store-driven; IAdService is
 
 ## Verification
 
-`npm test` covers formulas and store transitions, including daily payouts, skipped/duplicate ads, boost expiry, offline caps and claims, hydration, scouting genres, and maxed training. `npm run build` checks TypeScript and bundles the app. Browser interaction and native-device testing remain manual checks.
+`npm test` passes 32 tests covering formulas, store transitions, save compatibility, automatic income, portrait allocation, and house simulation routes and gains. `npm run build` checks TypeScript and bundles the app. A headless Chrome screenshot at mobile width verified the initial 3D scene layout. Device testing and full interaction checks for the new renderer remain pending.
 
 Suggested browser checks: claim offline rewards through an ad; skip and retry scouting; recruit each genre; resume after boost expiry; reload an unclaimed offline reward; watch five sponsor clips to inspect payouts.
 

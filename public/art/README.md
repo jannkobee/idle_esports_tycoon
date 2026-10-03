@@ -1,0 +1,7 @@
+# Player artwork
+
+Asset: `esports-players.png`. Generated with the built-in image_gen tool on October 4, 2026. Six fictional adult esports characters in a 3-column, 2-row atlas. Rendered directly using CSS background positioning; no external image service is required at runtime. Character animations are CSS presentation, not generated animation frames.
+
+## Generation prompt
+
+Create a production game art character atlas for an esports idle management game. One square image divided into an EXACT seamless 3 column by 2 row grid of six equal rectangular cells. Each cell contains ONE different fictional adult human esports player, waist-up, facing forward slightly three-quarter, wearing a headset and tasteful unbranded navy esports jersey, hands near lower edge as if using keyboard. Characters: top left Filipino man with short black hair; top middle Black woman with curly hair; top right East Asian woman with short purple hair; bottom left white man with wavy auburn hair and glasses; bottom middle South Asian man with dark swept hair; bottom right Latina woman with brown ponytail. Appealing polished stylized 3D game characters, expressive friendly competitive faces, vibrant cyan and violet rim lighting, consistent scale and waist-up framing with heads fully inside each cell. Each cell plain solid deep navy background, no borders, no gaps, no text, no logos, no watermark. This is a usable character sprite atlas, not a UI mockup.

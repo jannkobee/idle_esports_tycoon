@@ -1,6 +1,8 @@
-﻿# Esports Dynasty: Idle Manager
+# Esports Dynasty: Idle Manager
 
 A browser prototype for building an esports organization through idle income, facility upgrades, scouting, training, tournaments, and optional simulated sponsor ads.
+
+Explore a playable 3D cutaway esports house with five furnished rooms and roster characters who practice at desks and walk through the hallway. Drag and zoom the house, select a room to unlock or upgrade it, or select a player to inspect them. Revenue arrives automatically; no repetitive cash tapping is required.
 
 ## Development
 
@@ -16,7 +18,7 @@ npm run preview
 
 On Windows PowerShell, use `npm.cmd` if execution policy blocks `npm.ps1`.
 
-Current stack: React 18, TypeScript, Vite 5, Tailwind 3, Zustand 4 with localStorage persistence, Lucide, Framer Motion, and Vitest. Capacitor and real AdMob integration are planned; `npx cap sync` is not available yet.
+Current stack: React 18, TypeScript, Vite 5, Tailwind 3, React Three Fiber, Three.js, Drei, Zustand 4 with localStorage persistence, Lucide, Framer Motion, and Vitest. Capacitor and real AdMob integration are planned; `npx cap sync` is not available yet.
 
 Select a genre in the roster before scouting (All Genres defaults to FPS). VIP mock ads guarantee Silver or better. Income boosts last two hours and stack to eight hours. Offline earnings are capped at eight hours and account for boost expiry. Daily sponsor rewards pay automatically at 1, 3, and 5 completed ads, resetting at midnight UTC.
 

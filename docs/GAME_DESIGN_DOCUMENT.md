@@ -48,7 +48,7 @@ Rather than blocking players with hard paywalls or interrupting them with intrus
 ## 3. Game Loops
 
 ### 3.1 The Micro-Loop (Seconds to 2 Minutes)
-1. **Tap / Generate:** Tap the "Bootcamp Scrim" desk or collect generated stream tips from pro players.
+1. **Watch / Manage:** Watch visible roster members practice at their gaming stations while facilities generate revenue automatically. Select players to inspect stats and recruit to fill open seats; there is no cash-tapping mechanic.
 2. **Instant Upgrades:** Spend accumulated cash on hardware upgrades (High-Refresh Monitors, Mechanical Keyboards, Ergonomic Gaming Chairs).
 3. **Random Pop-Up Events:** A floating "Energy Drink Drone" or "Sponsor Call" pops up on screen offering an instant 30-second Rewarded Ad for a huge cash windfall or 30s frenzy.
 

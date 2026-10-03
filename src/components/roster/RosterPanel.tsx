@@ -4,6 +4,7 @@ import { EsportsDiscipline, DISCIPLINE_INFO, ProPlayer, PlayerStats } from '../.
 import { Crosshair, Shield, Flame, Swords, UserPlus, PlayCircle, Sparkles, Award } from 'lucide-react';
 import { formatCash } from '../../utils/formatCurrency';
 import confetti from 'canvas-confetti';
+import { PlayerPortrait } from './PlayerPortrait';
 
 const ICON_MAP = {
   Crosshair,
@@ -163,8 +164,8 @@ export const RosterPanel: React.FC = () => {
               {/* Header Info */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl border ${rarityStyle.border} ${rarityStyle.bg} flex items-center justify-center overflow-hidden`}>
-                    <img src={player.avatar} alt={player.handle} className="w-10 h-10 object-cover" />
+                  <div className={`w-20 shrink-0 rounded-xl border ${rarityStyle.border} ${rarityStyle.bg} overflow-hidden`}>
+                    <PlayerPortrait player={player} />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -176,7 +177,7 @@ export const RosterPanel: React.FC = () => {
                     <div className="text-xs text-slate-400 flex items-center gap-1.5 mt-0.5">
                       <span>{disciplineInfo?.name}</span>
                       <span>•</span>
-                      <span className="font-mono text-emerald-400">{formatCash(player.salaryPerSec)}/s salary</span>
+                      <span>{player.role}</span>
                     </div>
                   </div>
                 </div>

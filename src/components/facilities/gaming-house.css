@@ -1,0 +1,54 @@
+.gaming-house { background: #111c22; color: #e6eee9; padding-bottom: 4px; }
+.house-heading { display: flex; justify-content: space-between; align-items: center; padding: 17px 16px 14px; }
+.house-heading p { font-size: 9px; letter-spacing: 1.8px; color: #79aaa8; font-weight: 800; margin-bottom: 4px; }
+.house-heading h1 { font-size: 18px; letter-spacing: -.6px; font-weight: 900; }
+.house-live { font-size: 9px; font-weight: 800; color: #44896d; display: flex; gap: 4px; align-items: center; }
+.house-live i { width: 5px; height: 5px; border-radius: 50%; background: #579979; }
+.house-map { position: relative; background: #142025; overflow: hidden; border-top: 1px solid #2a4248; border-bottom: 1px solid #2a4248; }
+.house-map-caption { position: absolute; z-index: 1; top: 16px; left: 16px; pointer-events: none; display: flex; flex-direction: column; gap: 2px; }
+.house-map-caption span { color: #d7e7dc; font-size: 11px; letter-spacing: 2px; font-weight: 900; }
+.house-map-caption small { color: #91a9a8; font-size: 10px; }
+.house-scene { width: 100%; height: min(104vw, 480px); min-height: 390px; cursor: grab; }
+.house-scene:active { cursor: grabbing; }
+.scene-room-label { display: block; white-space: nowrap; padding: 4px 6px; border: 1px solid #85a7a999; border-radius: 4px; background: #10262ad9; color: #e2f3ed; font: 800 9px/1.2 system-ui, sans-serif; letter-spacing: .8px; box-shadow: 0 2px 8px #0008; }
+.scene-room-label.active { border-color: #e7b56a; color: #ffe2af; }
+.house-world { width: 100%; display: block; min-height: 390px; touch-action: none; user-select: none; cursor: grab; }
+.house-world:active { cursor: grabbing; }
+.house-interactive { cursor: pointer; outline: none; }
+.house-room:focus-visible > polygon:first-child { stroke: #225f88; stroke-width: 6; }
+.house-person:focus-visible > ellipse { fill: #f5c45f; rx: 20px; ry: 8px; }
+.house-camera { position: absolute; right: 10px; top: 12px; z-index: 2; display: flex; flex-direction: column; gap: 5px; }
+.house-camera button { width: 31px; height: 31px; border: 1px solid #6e969988; border-radius: 9px; background: #193139e8; box-shadow: 0 2px 9px #0005; color: #d3eeeb; display: grid; place-items: center; }
+.house-camera button:disabled { opacity: .4; }
+.house-camera button:hover { background: #28505a; }
+.house-map-footer { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.house-map-footer span { font-size: 9px; color: #f9fff2; background: #365548c9; padding: 7px 9px; border-radius: 8px; display: flex; gap: 5px; align-items: center; }
+.house-map-footer button { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 11px; color: #212d31; background: #e7b56a; padding: 8px 12px; border-radius: 9px; box-shadow: 0 2px 0 #a37b43; }
+.house-shifts { position: absolute; bottom: 53px; right: 12px; background: #fff5d8; padding: 5px 8px; border-radius: 8px; font-size: 10px; }
+.house-room-tabs { display: flex; gap: 5px; padding: 12px 12px 0; overflow-x: auto; }
+.house-room-tabs button { white-space: nowrap; display: flex; align-items: center; gap: 3px; font-size: 8px; font-weight: 800; background: #203239; border: 1px solid #334e53; border-radius: 7px; padding: 8px; color: #a9c1be; }
+.house-room-tabs button.selected { color: #ffe2af; background: #3c3830; border-color: #b88e53; }
+.house-inspector { margin: 10px 12px 0; background: #1d2c34; border: 1px solid #385058; border-radius: 14px; padding: 14px; box-shadow: 0 3px 0 #0c1519; }
+.house-inspector-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.house-inspector .house-eyebrow { color: #8db6b5; font-size: 8px; letter-spacing: 1.1px; font-weight: 800; margin: 0 0 3px; }
+.house-inspector h2 { font-size: 16px; letter-spacing: -.4px; font-weight: 900; }
+.house-inspector-top > span { font-size: 14px; font-weight: 900; white-space: nowrap; }
+.house-inspector p { font-size: 11px; line-height: 1.6; color: #afc5c1; margin-top: 6px; }
+.house-upgrade-row { display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 12px; }
+.house-upgrade-row small { font-size: 9px; color: #a9bdb9; display: flex; align-items: center; gap: 3px; }
+.house-upgrade-row button { flex-shrink: 0; display: flex; align-items: center; gap: 5px; background: #397f6c; color: #f4fff0; border-radius: 9px; font-size: 11px; font-weight: 700; padding: 10px 11px; box-shadow: 0 3px 0 #2c6655; }
+.house-upgrade-row button:disabled { background: #d4dcce; color: #8b9983; box-shadow: 0 3px 0 #c4cdbd; cursor: not-allowed; }
+.house-upgrade-row button:not(:disabled):active { transform: translateY(2px); box-shadow: none; }
+.house-notice { min-height: 32px; padding: 10px 16px; text-align: center; font-size: 9px; color: #96b2ad; }
+.house-player-inspector { display: flex; gap: 12px; align-items: center; }
+.house-player-inspector small { font-size: 9px; color: #738770; }
+.house-screen-glow { animation: screen-glow 2s ease-in-out infinite alternate; }
+.house-working { animation: pro-working 1.8s ease-in-out infinite alternate; }
+.house-walking .house-leg-left { animation: pro-step .35s ease-in-out infinite alternate; }
+.house-walking .house-leg-right { animation: pro-step .35s ease-in-out infinite alternate-reverse; }
+.house-people-paused *, .house-world-paused * { animation-play-state: paused !important; }
+@keyframes screen-glow { to { opacity: .45; } }
+@keyframes pro-working { to { transform: translateY(1px); } }
+@keyframes pro-step { to { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .gaming-house * { animation: none !important; transition: none !important; } }
+@media (max-width: 360px) { .house-heading h1 { font-size: 16px; } .house-room-tabs button { padding: 7px 5px; } .house-upgrade-row { flex-wrap: wrap; } }

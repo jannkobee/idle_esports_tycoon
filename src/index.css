@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+.player-portrait {
+  aspect-ratio: 2 / 3;
+  width: 100%;
+  background-image: url('/art/esports-players.png');
+  background-size: 300% 200%;
+  background-repeat: no-repeat;
+  background-color: #0c1732;
+}
 :root {
   font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   color-scheme: dark;

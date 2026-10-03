@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Facility, FacilityId } from '../types/facility.types';
-import { ProPlayer, PlayerStats, EsportsDiscipline } from '../types/player.types';
+import { ProPlayer, PlayerStats, EsportsDiscipline, RARITY_CAPS } from '../types/player.types';
+import { ActivityGains } from '../types/house.types';
 import { AdPlacement, AdBoostStatus } from '../types/ad.types';
 import { FormulaService } from '../engine/FormulaService';
+import { getPortraitIndex, PLAYER_IDENTITIES } from '../engine/PlayerAppearance';
 
 export interface OfflineModalData {
   isOpen: boolean;
@@ -26,7 +28,6 @@ interface GameStoreState {
   energyCans: number;
   legacyTrophies: number;
   lifetimeEarnings: number;
-  tapPower: number;
   season: number;
   lastSavedTimestamp: number;
 
@@ -47,7 +48,6 @@ interface GameStoreState {
   activeDrone: DroneDropData | null;
 
   // Actions
-  tapScrim: () => number;
   upgradeFacility: (id: FacilityId) => boolean;
   unlockFacility: (id: FacilityId) => boolean;
   tick: (currentTimestamp: number) => void;
@@ -63,6 +63,7 @@ interface GameStoreState {
   // Roster Management
   scoutPlayer: (isVipAd: boolean, discipline?: EsportsDiscipline) => ProPlayer | null;
   trainPlayer: (playerId: string, stat: keyof PlayerStats) => void;
+  applyActivityGains: (gains: ActivityGains) => void;
   
   // Drone Drops
   spawnDrone: () => void;
@@ -151,7 +152,7 @@ const INITIAL_ROSTER: ProPlayer[] = [
     id: 'p_starter_1',
     name: 'Alex Vance',
     handle: 'K1netic',
-    avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150&auto=format&fit=crop&q=80',
+    portraitIndex: 0,
     discipline: 'fps',
     rarity: 'silver',
     role: 'starter',
@@ -174,7 +175,6 @@ export const useGameStore = create<GameStoreState>()(
       energyCans: 5,
       legacyTrophies: 0,
       lifetimeEarnings: 50,
-      tapPower: 2,
       season: 1,
       lastSavedTimestamp: Date.now(),
 
@@ -189,18 +189,6 @@ export const useGameStore = create<GameStoreState>()(
       pendingCallback: null,
       offlineModal: null,
       activeDrone: null,
-
-      tapScrim: () => {
-        const { tapPower, boostExpiresAt, cash, lifetimeEarnings } = get();
-        const isBoostActive = Date.now() < boostExpiresAt;
-        const earned = tapPower * (isBoostActive ? 2 : 1);
-
-        set({
-          cash: cash + earned,
-          lifetimeEarnings: lifetimeEarnings + earned,
-        });
-        return earned;
-      },
 
       upgradeFacility: (id: FacilityId) => {
         const { facilities, cash } = get();
@@ -381,8 +369,12 @@ export const useGameStore = create<GameStoreState>()(
         const scoutCost = isVipAd ? 0 : 500;
         if (!isVipAd && cash < scoutCost) return null;
 
-        const handles = ['Viper', 'Ghost', 'S1mple_X', 'Neo', 'Faker_Fan', 'Shroud_JR', 'TenZing', 'Chronos'];
-        const randomHandle = handles[Math.floor(Math.random() * handles.length)] + '_' + Math.floor(Math.random() * 99);
+        const usedPortraits = new Set(roster.map(p => p.portraitIndex));
+        const available = PLAYER_IDENTITIES.map((_, i) => i).filter(i => !usedPortraits.has(i));
+        const pool = available.length ? available : PLAYER_IDENTITIES.map((_, i) => i);
+        const portraitIndex = pool[Math.floor(Math.random() * pool.length)];
+        const identity = PLAYER_IDENTITIES[portraitIndex];
+        const randomHandle = `${identity.handle}_${roster.length + 1}`;
         const rarityRoll = Math.random();
         
         let rarity: ProPlayer['rarity'] = 'bronze';
@@ -414,9 +406,9 @@ export const useGameStore = create<GameStoreState>()(
 
         const newPlayer: ProPlayer = {
           id: crypto.randomUUID(),
-          name: `Pro ${randomHandle}`,
+          name: identity.name,
           handle: randomHandle,
-          avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${randomHandle}`,
+          portraitIndex,
           discipline,
           rarity,
           role: roster.length < 5 ? 'starter' : 'sub',
@@ -461,6 +453,25 @@ export const useGameStore = create<GameStoreState>()(
             return p;
           }),
         });
+      },
+
+      applyActivityGains: (gains: ActivityGains) => {
+        set(state => ({
+          hype: state.hype + gains.hype,
+          roster: state.roster.map(player => {
+            const statGains = gains.stats[player.id];
+            if (!statGains) return player;
+            const stats = { ...player.stats };
+            const trainingProgress = { ...player.trainingProgress };
+            const cap = RARITY_CAPS[player.rarity];
+            for (const stat of Object.keys(statGains) as (keyof PlayerStats)[]) {
+              const total = (trainingProgress[stat] ?? 0) + (statGains[stat] ?? 0);
+              stats[stat] = Math.min(cap, stats[stat] + Math.floor(total));
+              trainingProgress[stat] = stats[stat] >= cap ? 0 : total % 1;
+            }
+            return { ...player, stats, trainingProgress };
+          }),
+        }));
       },
 
       spawnDrone: () => {
@@ -522,14 +533,21 @@ export const useGameStore = create<GameStoreState>()(
         return save;
       },
       // Old v1 saves included modal flags but could not serialize callbacks.
-      merge: (saved, current) => ({
+      merge: (saved, current) => {
+        const { tapPower: _tapPower, tapScrim: _tapScrim, ...previous } = saved as Partial<GameStoreState> & { tapPower?: number; tapScrim?: unknown };
+        return ({
         ...current,
-        ...(saved as Partial<GameStoreState>),
+        ...previous,
+        roster: (previous.roster ?? current.roster).map(player => {
+          const { avatar: _avatar, ...rest } = player as ProPlayer & { avatar?: string };
+          return { ...rest, portraitIndex: getPortraitIndex(player.id, player.portraitIndex) };
+        }),
         isSimulatedAdOpen: false,
         pendingPlacement: null,
         pendingCallback: null,
         activeDrone: null,
-      }),
+      });
+      },
     }
   )
 );

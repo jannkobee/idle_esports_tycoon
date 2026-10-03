@@ -15,7 +15,7 @@ Phase 1: Core Idle Engine, Math Formulas & Zustand State
    ↓
 Phase 2: Ad Architecture Abstraction & Interactive Web Mock Ad Player
    ↓
-Phase 3: Headquarters / Gaming House Facilities UI & Tap Loop
+Phase 3: Headquarters / Gaming House Facilities UI & Live Team Room
    ↓
 Phase 4: Pro Player Roster, Training System & Scouting Agency
    ↓
@@ -100,7 +100,7 @@ Phase 7: Mobile Capacitor Packaging, Android Build & Native AdMob Setup
 
 ---
 
-### Phase 3: Gaming House Facilities UI & Tap Loop
+### Phase 3: Gaming House Facilities UI & Live Team Room
 
 #### Task 3.1: Facility Room Cards
 - **Target Files:** `src/components/facilities/FacilityCard.tsx`, `src/components/facilities/FacilityList.tsx`
@@ -113,11 +113,13 @@ Phase 7: Mobile Capacitor Packaging, Android Build & Native AdMob Setup
 - **Acceptance Criteria:**
   - Each room shows level, current DPS (Dollars Per Second), cost to upgrade, and "Upgrade x1 / x10 / Max" toggle.
 
-#### Task 3.2: Interactive Tap Booster ("Clicker" mechanic)
-- **Target Files:** `src/components/facilities/ScrimTapArea.tsx`
-- **Description:** Center interactive area where tapping gives instant cash and spawns floating "+$15" animated numbers (Framer Motion).
+#### Task 3.2: Automatic Team Room (replaces the cash clicker)
+- **Target Files:** `src/components/facilities/GamingHouse.tsx`, `HouseScenery.tsx`, `HousePeople.tsx`, `src/core/engine/HouseLayout.ts`, `src/components/roster/PlayerPortrait.tsx`
+- **Description:** Isometric cutaway house with five furnished rooms, actual roster characters practicing and walking, and automatic income. Select rooms to unlock/upgrade, select players to inspect stats, and pan/zoom the view. Initial playable version implemented; richer room-specific activities and animation remain future work.
 - **Acceptance Criteria:**
-  - Smooth 60fps particle/number animations on rapid click/tap.
+  - Stable local portraits survive reloads; existing saves retain progress.
+  - No cash-tap action; selecting players never changes currency.
+  - Paginate larger rosters and respect reduced-motion preferences.
 
 ---
 

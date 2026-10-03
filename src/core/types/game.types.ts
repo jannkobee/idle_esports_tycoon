@@ -10,7 +10,6 @@ export interface GameCurrencies {
 }
 
 export interface EconomyState extends GameCurrencies {
-  tapPower: number;
   lifetimeEarnings: number;
 }
 
