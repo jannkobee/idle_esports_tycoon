@@ -14,7 +14,7 @@ export type ActivityId = 'practice' | 'stream' | 'exercise' | 'review' | 'break'
  */
 export type Facing = 'ne' | 'nw' | 'se' | 'sw';
 
-export type StationPose = 'sit' | 'stand' | 'run' | 'lift' | 'bike' | 'stretch' | 'lounge';
+export type StationPose = 'sit' | 'stand' | 'run' | 'lift' | 'bike' | 'stretch' | 'lounge' | 'tv' | 'hoops';
 
 export type HouseArea = FacilityId | 'hall';
 
@@ -37,7 +37,8 @@ export interface HouseStation {
 
 export type FurnitureKind =
   | 'desk' | 'chair' | 'streamDesk' | 'backdrop' | 'sofa' | 'table' | 'wallScreen' | 'bookshelf'
-  | 'treadmill' | 'bench' | 'bike' | 'mat' | 'cooler' | 'vending' | 'rack' | 'plant' | 'waterStation' | 'counter';
+  | 'treadmill' | 'bench' | 'bike' | 'mat' | 'cooler' | 'vending' | 'rack' | 'plant' | 'waterStation' | 'counter'
+  | 'patioSofa' | 'patioTv' | 'basketballHoop' | 'gardenBench' | 'carSeat';
 
 export interface FurnitureItem {
   id: string;

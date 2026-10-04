@@ -9,6 +9,7 @@ import { HouseEnvironment3D } from './HouseEnvironment3D';
 import { HouseRooms3D } from './HouseRooms3D';
 import { HouseFurniture3D } from './HouseFurniture3D';
 import { HouseCharacters3D } from './HouseCharacters3D';
+import type { EmpireState } from '../../../core/store/useGameStore';
 
 interface HouseCanvas3DProps {
   facilities: Record<FacilityId, Facility>;
@@ -21,6 +22,7 @@ interface HouseCanvas3DProps {
   resetView: number;
   onSelectRoom: (id: FacilityId) => void;
   onSelectPlayer: (id: string) => void;
+  empire: EmpireState;
 }
 
 const DEFAULT_CAMERA_POS: [number, number, number] = [27, 28, 27];
@@ -88,7 +90,9 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
   resetView,
   onSelectRoom,
   onSelectPlayer,
+  empire,
 }) => {
+
   return (
     <div className="w-full h-full relative select-none">
       <Canvas
@@ -105,22 +109,29 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
           powerPreference: 'high-performance',
         }}
       >
-        <color attach="background" args={['#0a0f14']} />
-        <fog attach="fog" args={['#0a0f14', 38, 85]} />
+        <color attach="background" args={['#38bdf8']} />
+        <fog attach="fog" args={['#bae6fd', 80, 180]} />
 
         {/* Ambient & Key Lighting */}
-        <ambientLight intensity={0.75} color="#e0f2fe" />
-        <hemisphereLight args={['#e0f2fe', '#0f172a', 0.85]} />
+        <ambientLight
+          intensity={1.12}
+          color="#e0f2fe"
+        />
+        <hemisphereLight
+          args={[
+            '#e0f2fe', '#15803d', 0.95,
+          ]}
+        />
         <directionalLight
           position={[12, 26, 16]}
-          intensity={2.3}
+          intensity={2.65}
           color="#fffbeb"
           castShadow
           shadow-mapSize={[1024, 1024]}
           shadow-camera-left={-16}
           shadow-camera-right={16}
           shadow-camera-top={16}
-          shadow-camera-bottom={16}
+          shadow-camera-bottom={-16}
           shadow-bias={-0.0003}
         />
 
@@ -138,7 +149,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
           />
 
           {/* Exterior Landscape, Street, and Parked Sports Car */}
-          <HouseEnvironment3D />
+          <HouseEnvironment3D empire={empire} />
 
           {/* Room Architectures, Distinct Floors, and Partition Walls */}
           <HouseRooms3D
@@ -157,6 +168,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={onSelectPlayer}
             paused={paused}
+            jerseyColors={empire.branding}
           />
         </Suspense>
 
@@ -166,4 +178,3 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
     </div>
   );
 };
-

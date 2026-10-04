@@ -20,8 +20,12 @@ import {
   BookOpen,
   Coffee,
   Zap,
+  Palette,
+  Tv,
+  Check,
+  Building2,
 } from 'lucide-react';
-import { useGameStore } from '../../core/store/useGameStore';
+import { useGameStore, WallpaperStyle } from '../../core/store/useGameStore';
 import { useHouseSimulationStore } from '../../core/house/useHouseSimulation';
 import { HOUSE_ROOMS } from '../../core/engine/HouseLayout';
 import { FormulaService } from '../../core/engine/FormulaService';
@@ -35,6 +39,7 @@ interface GamingHouseProps {
   onOpenTournaments: () => void;
   onOpenSponsors: () => void;
   onOpenRecruit: () => void;
+  onOpenEmpire: () => void;
 }
 
 const ACTIVITY_LABELS: Record<string, { label: string; icon: typeof Crosshair; color: string }> = {
@@ -45,11 +50,19 @@ const ACTIVITY_LABELS: Record<string, { label: string; icon: typeof Crosshair; c
   break: { label: 'Break & Team Bonding', icon: Coffee, color: 'text-emerald-400' },
 };
 
+const WALLPAPERS: { id: WallpaperStyle; label: string; desc: string }[] = [
+  { id: 'default', label: 'Pro Modern', desc: 'Ash wood & clean slate' },
+  { id: 'cyberpunk', label: 'Cyberpunk', desc: 'Neon cyan & purple' },
+  { id: 'carbon', label: 'Carbon Stealth', desc: 'Dark carbon & cobalt' },
+  { id: 'minimalist', label: 'Scandinavian', desc: 'Warm cream & honey' },
+];
+
 export const GamingHouse: React.FC<GamingHouseProps> = ({
   onOpenRoster,
   onOpenTournaments,
   onOpenSponsors,
   onOpenRecruit,
+  onOpenEmpire,
 }) => {
   const {
     facilities,
@@ -59,6 +72,10 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
     boostExpiresAt,
     upgradeFacility,
     unlockFacility,
+    empire,
+    houseInterior,
+    setWallpaperStyle,
+    upgradeLoungeTv,
   } = useGameStore();
 
   const agents = useHouseSimulationStore((s) => s.agents);
@@ -66,6 +83,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
   const setSelectedPlayerId = useHouseSimulationStore((s) => s.setSelectedPlayerId);
 
   const [roomId, setRoomId] = useState<FacilityId>('scrim_lab');
+  const [inspectorMode, setInspectorMode] = useState<'room' | 'decor'>('room');
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
   const [zoomStep, setZoomStep] = useState(0);
   const [resetView, setResetView] = useState(0);
@@ -98,6 +116,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
 
   const selectRoom = (id: FacilityId) => {
     setRoomId(id);
+    setInspectorMode('room');
     setSelectedPlayerId(null);
   };
 
@@ -138,6 +157,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
           onSelectPlayer={(id) => {
             setSelectedPlayerId(id);
           }}
+          empire={empire}
         />
       </div>
 
@@ -255,6 +275,14 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
               5 Areas
             </span>
           </button>
+          <button
+            onClick={onOpenEmpire}
+            className="flex-1 min-w-[62px] flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-xl bg-cyan-950/70 hover:bg-cyan-900 active:scale-95 border border-cyan-700/60 text-cyan-100 transition-all"
+          >
+            <Building2 size={15} className="text-cyan-300" />
+            <span className="text-[10px] font-black tracking-tight">Empire</span>
+            <span className="text-[8px] text-cyan-300 font-bold">Living World</span>
+          </button>
         </div>
       </div>
 
@@ -277,12 +305,12 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
           <div className="w-full flex items-center gap-1.5 overflow-x-auto scrollbar-none bg-slate-950/90 backdrop-blur-md border border-slate-800/80 rounded-2xl p-1.5 shadow-xl animate-in slide-in-from-bottom-2 duration-150">
             {HOUSE_ROOMS.map((r) => {
               const fac = facilities[r.id];
-              const isSelected = roomId === r.id && !selectedPlayer;
+              const isSelected = inspectorMode === 'room' && roomId === r.id && !selectedPlayer;
               return (
                 <button
                   key={r.id}
                   onClick={() => selectRoom(r.id)}
-                  className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-xl text-[10px] font-extrabold flex items-center justify-center gap-1 whitespace-nowrap border transition-all ${
+                  className={`flex-1 min-w-[76px] py-1.5 px-2 rounded-xl text-[10px] font-extrabold flex items-center justify-center gap-1 whitespace-nowrap border transition-all ${
                     isSelected
                       ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md'
                       : 'bg-slate-900/80 text-slate-300 border-slate-800 hover:bg-slate-800'
@@ -293,6 +321,20 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
                 </button>
               );
             })}
+            <button
+              onClick={() => {
+                setInspectorMode('decor');
+                setSelectedPlayerId(null);
+              }}
+              className={`flex-1 min-w-[84px] py-1.5 px-2 rounded-xl text-[10px] font-extrabold flex items-center justify-center gap-1 whitespace-nowrap border transition-all ${
+                inspectorMode === 'decor' && !selectedPlayer
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-300 shadow-md'
+                  : 'bg-slate-900/80 text-cyan-300 border-cyan-800/60 hover:bg-slate-800'
+              }`}
+            >
+              <Palette size={11} />
+              <span>Decor & TV</span>
+            </button>
           </div>
         )}
 
@@ -360,8 +402,116 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
               </div>
             </div>
           </div>
+        ) : inspectorMode === 'decor' ? (
+          /* 2. HQ DECOR & LOUNGE TV INSPECTOR CARD */
+          <div className="w-full bg-slate-950/90 backdrop-blur-md border border-slate-800/90 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 animate-in slide-in-from-bottom-3 duration-200">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-sm font-black text-white">Interior Decor & Entertainment</h3>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Customize wall designs & upgrade the Team Lounge TV to boost player mood & sleep
+                </p>
+              </div>
+              <button
+                onClick={() => setInspectorMode('room')}
+                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                aria-label="Back to room inspector"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Section 1: Wallpaper Aesthetic Theme */}
+            <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800/80">
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
+                Wall Aesthetic Theme
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {WALLPAPERS.map((wp) => {
+                  const isActive = houseInterior.wallpaperStyle === wp.id;
+                  return (
+                    <button
+                      key={wp.id}
+                      onClick={() => setWallpaperStyle(wp.id)}
+                      className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all active:scale-95 ${
+                        isActive
+                          ? 'bg-slate-800/90 border-cyan-400 ring-1 ring-cyan-400/50'
+                          : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black text-white">{wp.label}</span>
+                        {isActive && <Check size={11} className="text-cyan-400" />}
+                      </div>
+                      <span className="text-[8px] text-slate-400 leading-tight">{wp.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Section 2: Upgradable Team Lounge TV */}
+            <div className="flex flex-col gap-1.5 pt-1 border-t border-slate-800/80">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Tv className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-black text-white">
+                        {houseInterior.loungeTvLevel === 3
+                          ? '100" Stadium Jumbotron & Trophy Shelf'
+                          : houseInterior.loungeTvLevel === 2
+                          ? '75" Dual-Screen Esports Lounge'
+                          : '55" OLED Tactical Review Screen'}
+                      </span>
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        TV LVL {houseInterior.loungeTvLevel}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-slate-400 block">
+                      {houseInterior.loungeTvLevel === 3
+                        ? 'Max tier: +30 Team Mood · +20 Sleep Recovery'
+                        : houseInterior.loungeTvLevel === 2
+                        ? 'Tier 2: +15 Team Mood · +10 Sleep Recovery'
+                        : 'Base screen: Upgrading restores team morale'}
+                    </span>
+                  </div>
+                </div>
+
+                {houseInterior.loungeTvLevel < 3 ? (
+                  <button
+                    onClick={() => {
+                      const ok = upgradeLoungeTv();
+                      if (ok) {
+                        setNotice(
+                          `📺 Lounge TV upgraded to Level ${houseInterior.loungeTvLevel + 1}! Roster mood boosted!`
+                        );
+                      }
+                    }}
+                    disabled={cash < (houseInterior.loungeTvLevel === 1 ? 3500 : 12000)}
+                    className={`py-1.5 px-3 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-lg active:scale-95 transition-all shrink-0 ${
+                      cash >= (houseInterior.loungeTvLevel === 1 ? 3500 : 12000)
+                        ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/20'
+                        : 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    }`}
+                  >
+                    <ArrowUp size={12} />
+                    <span>Upgrade</span>
+                    <strong>{formatCash(houseInterior.loungeTvLevel === 1 ? 3500 : 12000)}</strong>
+                  </button>
+                ) : (
+                  <span className="text-[9px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded-lg">
+                    MAX LEVEL
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         ) : (
-          /* 2. SELECTED ROOM INSPECTOR CARD */
+          /* 3. SELECTED ROOM INSPECTOR CARD */
           <div className="w-full bg-slate-950/90 backdrop-blur-md border border-slate-800/90 rounded-2xl p-3 shadow-2xl flex flex-col gap-2.5 animate-in slide-in-from-bottom-3 duration-200">
             <div className="flex items-start justify-between">
               <div>

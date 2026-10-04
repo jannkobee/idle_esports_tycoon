@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, Mesh } from 'three';
 import { Facility, FacilityId } from '../../../core/types/facility.types';
+import { useGameStore } from '../../../core/store/useGameStore';
 
 interface HouseFurniture3DProps {
   facilities: Record<FacilityId, Facility>;
@@ -229,22 +230,145 @@ function BattlestationRig({
         <mesh position={[0, 0.45, 0.022]}>
           <planeGeometry args={[0.78, 0.44]} />
           <meshStandardMaterial
-            color={upgraded ? '#581c87' : '#0e7490'}
+            color={upgraded ? '#3b0764' : '#032030'}
             roughness={0.2}
-            emissive={upgraded ? '#7e22ce' : '#0284c7'}
+            emissive={upgraded ? '#581c87' : '#083344'}
             emissiveIntensity={0.65}
           />
         </mesh>
-        {/* Minimap Radar UI Accent in screen corner */}
-        <mesh position={[0.26, 0.55, 0.025]}>
-          <circleGeometry args={[0.07, 16]} />
-          <meshBasicMaterial color="#34d399" />
+
+        {/* --- IN-GAME FPS HUD GRAPHICS --- */}
+        {/* Arena corridor 3D perspective backdrop */}
+        <mesh position={[0, 0.42, 0.023]}>
+          <planeGeometry args={[0.74, 0.32]} />
+          <meshBasicMaterial color={upgraded ? '#2e1065' : '#0f172a'} />
         </mesh>
-        {/* Crosshair Accent */}
-        <mesh position={[0, 0.45, 0.025]}>
-          <ringGeometry args={[0.02, 0.025, 8]} />
-          <meshBasicMaterial color="#f43f5e" />
+        {/* Tactical arena floor grid */}
+        <mesh position={[0, 0.31, 0.024]}>
+          <planeGeometry args={[0.74, 0.12]} />
+          <meshBasicMaterial color={upgraded ? '#3b0764' : '#1e293b'} />
         </mesh>
+        {/* First-person weapon viewmodel on right */}
+        <mesh position={[0.22, 0.32, 0.025]} rotation={[0, 0, -0.2]}>
+          <boxGeometry args={[0.18, 0.06, 0.005]} />
+          <meshBasicMaterial color="#020617" />
+        </mesh>
+        <mesh position={[0.26, 0.35, 0.026]}>
+          <boxGeometry args={[0.04, 0.015, 0.005]} />
+          <meshBasicMaterial color="#06b6d4" />
+        </mesh>
+
+        {/* Center Crosshair with 4 tick reticles */}
+        <group position={[0, 0.45, 0.026]}>
+          <mesh position={[0, 0, 0]}>
+            <circleGeometry args={[0.006, 8]} />
+            <meshBasicMaterial color="#34d399" />
+          </mesh>
+          <mesh position={[-0.018, 0, 0]}>
+            <planeGeometry args={[0.012, 0.003]} />
+            <meshBasicMaterial color="#34d399" />
+          </mesh>
+          <mesh position={[0.018, 0, 0]}>
+            <planeGeometry args={[0.012, 0.003]} />
+            <meshBasicMaterial color="#34d399" />
+          </mesh>
+          <mesh position={[0, 0.018, 0]}>
+            <planeGeometry args={[0.003, 0.012]} />
+            <meshBasicMaterial color="#34d399" />
+          </mesh>
+          <mesh position={[0, -0.018, 0]}>
+            <planeGeometry args={[0.003, 0.012]} />
+            <meshBasicMaterial color="#34d399" />
+          </mesh>
+        </group>
+
+        {/* Minimap Radar UI on Top-Left with scan ping */}
+        <group position={[-0.26, 0.55, 0.025]}>
+          <mesh>
+            <circleGeometry args={[0.065, 16]} />
+            <meshBasicMaterial color="#022c22" />
+          </mesh>
+          <mesh>
+            <ringGeometry args={[0.062, 0.065, 16]} />
+            <meshBasicMaterial color="#10b981" />
+          </mesh>
+          <mesh position={[0.015, 0.01, 0.001]}>
+            <circleGeometry args={[0.009, 8]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+          <mesh position={[-0.02, -0.015, 0.001]}>
+            <circleGeometry args={[0.008, 8]} />
+            <meshBasicMaterial color="#ef4444" />
+          </mesh>
+        </group>
+
+        {/* Top Center Round Timer & Score: 12 - 10 */}
+        <group position={[0, 0.61, 0.025]}>
+          <mesh position={[0, 0, 0]}>
+            <planeGeometry args={[0.18, 0.04]} />
+            <meshBasicMaterial color="#020617" />
+          </mesh>
+          <mesh position={[-0.04, 0, 0.001]}>
+            <planeGeometry args={[0.045, 0.02]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+          <mesh position={[0.04, 0, 0.001]}>
+            <planeGeometry args={[0.045, 0.02]} />
+            <meshBasicMaterial color="#ef4444" />
+          </mesh>
+        </group>
+
+        {/* Top-Right Killfeed Entry */}
+        <group position={[0.24, 0.61, 0.025]}>
+          <mesh position={[0, 0, 0]}>
+            <planeGeometry args={[0.16, 0.03]} />
+            <meshBasicMaterial color="#0f172a" />
+          </mesh>
+          <mesh position={[-0.04, 0, 0.001]}>
+            <planeGeometry args={[0.05, 0.015]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+          <mesh position={[0.04, 0, 0.001]}>
+            <planeGeometry args={[0.04, 0.015]} />
+            <meshBasicMaterial color="#ef4444" />
+          </mesh>
+        </group>
+
+        {/* Bottom-Left Health & Armor Bars: 100 HP | 50 AP */}
+        <group position={[-0.24, 0.28, 0.025]}>
+          <mesh position={[0, 0.015, 0]}>
+            <planeGeometry args={[0.18, 0.018]} />
+            <meshBasicMaterial color="#14532d" />
+          </mesh>
+          <mesh position={[-0.01, 0.015, 0.001]}>
+            <planeGeometry args={[0.16, 0.014]} />
+            <meshBasicMaterial color="#22c55e" />
+          </mesh>
+          <mesh position={[0, -0.01, 0]}>
+            <planeGeometry args={[0.18, 0.014]} />
+            <meshBasicMaterial color="#0369a1" />
+          </mesh>
+          <mesh position={[-0.03, -0.01, 0.001]}>
+            <planeGeometry args={[0.12, 0.01]} />
+            <meshBasicMaterial color="#38bdf8" />
+          </mesh>
+        </group>
+
+        {/* Bottom-Right Ammo Counter: 30 / 90 */}
+        <group position={[0.26, 0.28, 0.025]}>
+          <mesh position={[0, 0, 0]}>
+            <planeGeometry args={[0.12, 0.028]} />
+            <meshBasicMaterial color="#020617" />
+          </mesh>
+          <mesh position={[-0.02, 0, 0.001]}>
+            <planeGeometry args={[0.04, 0.016]} />
+            <meshBasicMaterial color="#f8fafc" />
+          </mesh>
+          <mesh position={[0.03, 0, 0.001]}>
+            <planeGeometry args={[0.03, 0.012]} />
+            <meshBasicMaterial color="#94a3b8" />
+          </mesh>
+        </group>
       </group>
 
       {/* Secondary Angled Strategy / Chat Monitor */}
@@ -262,6 +386,30 @@ function BattlestationRig({
             roughness={0.3}
           />
         </mesh>
+        {/* Discord Voice & Team Comms Bubbles */}
+        <group position={[0, 0.42, 0.024]}>
+          {[-0.14, -0.05, 0.04, 0.13].map((vy, i) => (
+            <group key={i} position={[-0.16, vy, 0]}>
+              <mesh>
+                <circleGeometry args={[0.025, 12]} />
+                <meshBasicMaterial color={i === 0 ? '#22c55e' : '#475569'} />
+              </mesh>
+              <mesh position={[0.12, 0, 0]}>
+                <planeGeometry args={[0.16, 0.015]} />
+                <meshBasicMaterial color={i === 0 ? '#38bdf8' : '#64748b'} />
+              </mesh>
+            </group>
+          ))}
+          {/* Tactical map telemetry mini graph on lower half */}
+          <mesh position={[0, -0.12, 0]}>
+            <planeGeometry args={[0.42, 0.1]} />
+            <meshBasicMaterial color="#090d16" />
+          </mesh>
+          <mesh position={[-0.08, -0.12, 0.001]}>
+            <planeGeometry args={[0.18, 0.04]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+        </group>
       </group>
 
       {/* Extended Gaming Desk Pad */}
@@ -974,8 +1122,95 @@ function MerchContent({ level }: { level: number }) {
 // HALLWAY COMMONS (VENDING, COOLER, DECOR)
 // -------------------------------------------------------------
 function HallwayContent() {
+  const loungeTvLevel = useGameStore((s) => s.houseInterior.loungeTvLevel) ?? 1;
+
   return (
     <group position={[0, 0, 0]}>
+      {/* Upgradable Indoor Team Lounge Big Screen TV & Esports Entertainment Wall */}
+      <group position={[6.4, 0, 6.16]}>
+        {/* TV Wall Mount Chassis */}
+        <mesh position={[0, 1.45, 0]} castShadow>
+          <boxGeometry
+            args={[
+              loungeTvLevel === 3 ? 2.5 : loungeTvLevel === 2 ? 1.9 : 1.4,
+              loungeTvLevel === 3 ? 1.3 : loungeTvLevel === 2 ? 1.05 : 0.8,
+              0.08,
+            ]}
+          />
+          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.8} />
+        </mesh>
+
+        {/* Bezel frame with glowing team crest indicator */}
+        <mesh position={[0, 1.45, 0.042]}>
+          <boxGeometry
+            args={[
+              loungeTvLevel === 3 ? 2.54 : loungeTvLevel === 2 ? 1.94 : 1.44,
+              loungeTvLevel === 3 ? 1.34 : loungeTvLevel === 2 ? 1.09 : 0.84,
+              0.02,
+            ]}
+          />
+          <meshStandardMaterial color="#06b6d4" metalness={0.6} roughness={0.3} />
+        </mesh>
+
+        {/* Broadcast TV Display Screen */}
+        <mesh position={[0, 1.45, 0.054]}>
+          <planeGeometry
+            args={[
+              loungeTvLevel === 3 ? 2.45 : loungeTvLevel === 2 ? 1.85 : 1.35,
+              loungeTvLevel === 3 ? 1.25 : loungeTvLevel === 2 ? 1.0 : 0.75,
+            ]}
+          />
+          <meshStandardMaterial
+            color="#082f49"
+            emissive={loungeTvLevel === 3 ? '#0284c7' : '#0369a1'}
+            emissiveIntensity={0.8}
+            roughness={0.15}
+          />
+        </mesh>
+
+        {/* On-screen esports broadcast graphics: Tournament Trophy + Live Score */}
+        <group position={[0, 1.45, 0.056]}>
+          <mesh position={[0, 0.28, 0]}>
+            <planeGeometry args={[1.1, 0.1]} />
+            <meshBasicMaterial color="#020617" />
+          </mesh>
+          <mesh position={[-0.2, 0.28, 0.001]}>
+            <planeGeometry args={[0.35, 0.05]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+          <mesh position={[0.2, 0.28, 0.001]}>
+            <planeGeometry args={[0.35, 0.05]} />
+            <meshBasicMaterial color="#ef4444" />
+          </mesh>
+          {/* Level 3 Trophy Display Shelf below TV */}
+          {loungeTvLevel === 3 && (
+            <group position={[0, -0.75, 0.15]}>
+              <mesh castShadow>
+                <boxGeometry args={[2.2, 0.05, 0.35]} />
+                <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
+              </mesh>
+              {/* Golden Trophy on Shelf */}
+              <mesh position={[-0.5, 0.14, 0]}>
+                <cylinderGeometry args={[0.07, 0.03, 0.22, 10]} />
+                <meshStandardMaterial color="#facc15" metalness={0.9} roughness={0.1} />
+              </mesh>
+              <mesh position={[0.5, 0.14, 0]}>
+                <cylinderGeometry args={[0.07, 0.03, 0.22, 10]} />
+                <meshStandardMaterial color="#38bdf8" metalness={0.9} roughness={0.1} />
+              </mesh>
+            </group>
+          )}
+        </group>
+
+        {/* Ambient Glow illuminating the common hallway */}
+        <pointLight
+          position={[0, 1.45, 0.45]}
+          color="#38bdf8"
+          intensity={loungeTvLevel === 3 ? 1.4 : 0.8}
+          distance={4.8}
+        />
+      </group>
+
       {/* Bottled Water Cooler at (x=0.5, z=6.32) */}
       <group position={[0.7, 0, 6.55]}>
         {/* White Cooler Base Unit */}

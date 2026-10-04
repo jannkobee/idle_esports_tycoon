@@ -5,6 +5,7 @@ import { Group } from 'three';
 import { ProPlayer } from '../../../core/types/player.types';
 import { SimAgent } from '../../../core/house/simulation';
 import { Crosshair, Radio, Dumbbell, BookOpen, Coffee } from 'lucide-react';
+import type { OrgBranding } from '../../../core/empire/EmpireService';
 
 interface HouseCharacters3DProps {
   agents: SimAgent[];
@@ -12,6 +13,7 @@ interface HouseCharacters3DProps {
   selectedPlayerId: string | null;
   onSelectPlayer: (id: string) => void;
   paused: boolean;
+  jerseyColors: OrgBranding;
 }
 
 const SKIN_COLORS = [
@@ -46,12 +48,14 @@ function CharacterModel({
   selected,
   onSelect,
   paused,
+  jerseyColors,
 }: {
   agent: SimAgent;
   player: ProPlayer;
   selected: boolean;
   onSelect: () => void;
   paused: boolean;
+  jerseyColors: OrgBranding;
 }) {
   const rootRef = useRef<Group>(null);
   const leftLegRef = useRef<Group>(null);
@@ -161,6 +165,39 @@ function CharacterModel({
       return;
     }
 
+    if (agent.pose === 'tv') {
+      rootRef.current.position.y = 0.22;
+      rootRef.current.rotation.x = -0.12;
+      if (leftLegRef.current && rightLegRef.current) {
+        leftLegRef.current.rotation.x = Math.PI / 2.2;
+        rightLegRef.current.rotation.x = Math.PI / 2.2;
+      }
+      if (leftArmRef.current && rightArmRef.current) {
+        leftArmRef.current.rotation.x = -0.4;
+        rightArmRef.current.rotation.x = -0.4;
+      }
+      if (headRef.current && !paused) {
+        headRef.current.rotation.y = -0.25 + Math.sin(t * 0.4) * 0.08;
+        headRef.current.rotation.x = -0.12;
+      }
+      return;
+    }
+
+    if (agent.pose === 'hoops') {
+      rootRef.current.position.y = Math.abs(Math.sin(t * 1.6)) * 0.08;
+      rootRef.current.rotation.x = 0;
+      if (leftLegRef.current && rightLegRef.current) {
+        leftLegRef.current.rotation.x = Math.sin(t * 1.6) * 0.15;
+        rightLegRef.current.rotation.x = -Math.sin(t * 1.6) * 0.15;
+      }
+      if (leftArmRef.current && rightArmRef.current) {
+        const shot = Math.sin(t * 1.6);
+        rightArmRef.current.rotation.x = -Math.PI * 0.65 - shot * 0.35;
+        leftArmRef.current.rotation.x = -Math.PI * 0.4 - shot * 0.2;
+      }
+      return;
+    }
+
     rootRef.current.position.y = 0;
     rootRef.current.rotation.x = 0;
     if (leftLegRef.current && rightLegRef.current) {
@@ -170,6 +207,10 @@ function CharacterModel({
     if (leftArmRef.current && rightArmRef.current) {
       leftArmRef.current.rotation.x = 0;
       rightArmRef.current.rotation.x = 0;
+    }
+    if (headRef.current) {
+      headRef.current.rotation.x = 0;
+      headRef.current.rotation.y = 0;
     }
   });
 
@@ -219,12 +260,12 @@ function CharacterModel({
       >
         <mesh position={[0, 0.58, 0]} castShadow>
           <boxGeometry args={[0.34, 0.42, 0.22]} />
-          <meshStandardMaterial color="#1a2d54" roughness={0.7} />
+          <meshStandardMaterial color={jerseyColors.primaryColor} roughness={0.7} />
         </mesh>
 
         <mesh position={[0, 0.74, 0]}>
           <boxGeometry args={[0.36, 0.06, 0.24]} />
-          <meshStandardMaterial color="#06b6d4" roughness={0.5} />
+          <meshStandardMaterial color={jerseyColors.accentColor} roughness={0.5} />
         </mesh>
         <mesh position={[0.08, 0.65, 0.115]}>
           <planeGeometry args={[0.08, 0.08]} />
@@ -361,7 +402,7 @@ function CharacterModel({
         <group ref={leftArmRef} position={[-0.22, 0.72, 0]}>
           <mesh position={[0, -0.16, 0]} castShadow>
             <cylinderGeometry args={[0.045, 0.04, 0.32, 8]} />
-            <meshStandardMaterial color="#1a2d54" roughness={0.7} />
+            <meshStandardMaterial color={jerseyColors.primaryColor} roughness={0.7} />
           </mesh>
           <mesh position={[0, -0.34, 0]}>
             <sphereGeometry args={[0.045, 8, 8]} />
@@ -372,12 +413,24 @@ function CharacterModel({
         <group ref={rightArmRef} position={[0.22, 0.72, 0]}>
           <mesh position={[0, -0.16, 0]} castShadow>
             <cylinderGeometry args={[0.045, 0.04, 0.32, 8]} />
-            <meshStandardMaterial color="#1a2d54" roughness={0.7} />
+            <meshStandardMaterial color={jerseyColors.primaryColor} roughness={0.7} />
           </mesh>
           <mesh position={[0, -0.34, 0]}>
             <sphereGeometry args={[0.045, 8, 8]} />
             <meshStandardMaterial color={skin} roughness={0.8} />
           </mesh>
+          {agent.pose === 'hoops' && (
+            <mesh position={[0, -0.38, 0.08]} castShadow>
+              <sphereGeometry args={[0.11, 14, 12]} />
+              <meshStandardMaterial color="#ea580c" roughness={0.75} />
+            </mesh>
+          )}
+          {agent.pose === 'tv' && (
+            <mesh position={[0, -0.35, 0.06]}>
+              <cylinderGeometry args={[0.03, 0.03, 0.09, 8]} />
+              <meshStandardMaterial color="#06b6d4" metalness={0.7} roughness={0.3} />
+            </mesh>
+          )}
         </group>
 
         <group ref={leftLegRef} position={[-0.1, 0.38, 0]}>
@@ -412,6 +465,7 @@ export const HouseCharacters3D: React.FC<HouseCharacters3DProps> = ({
   selectedPlayerId,
   onSelectPlayer,
   paused,
+  jerseyColors,
 }) => {
   return (
     <group position={[0, 0, 0]}>
@@ -427,6 +481,7 @@ export const HouseCharacters3D: React.FC<HouseCharacters3DProps> = ({
             selected={selectedPlayerId === agent.id}
             onSelect={() => onSelectPlayer(agent.id)}
             paused={paused}
+            jerseyColors={jerseyColors}
           />
         );
       })}

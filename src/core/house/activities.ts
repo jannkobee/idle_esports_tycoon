@@ -79,8 +79,8 @@ export function calculateEnergyEfficiency(energy: number): number {
   return 0.6 + 0.4 * (Math.max(0, Math.min(100, energy)) / 100);
 }
 
-export function calculateCapMultiplier(currentStat: number, rarity: PlayerRarity): number {
-  const cap = RARITY_CAPS[rarity] ?? 100;
+export function calculateCapMultiplier(currentStat: number, rarity: PlayerRarity, potential?: number): number {
+  const cap = potential ?? RARITY_CAPS[rarity] ?? 100;
   if (currentStat >= cap) return 0;
   return Math.max(0.15, Math.min(1, (cap - currentStat) / 40));
 }

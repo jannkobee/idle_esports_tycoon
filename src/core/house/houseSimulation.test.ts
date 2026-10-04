@@ -459,4 +459,42 @@ describe('House Simulation Engine', () => {
       expect(recruitAgent.path.length).toBeGreaterThan(0);
     });
   });
+
+  describe('Outdoor Living Simulation and Patio Break Stations', () => {
+    it('defines accessible outdoor stations for TV watching, hoops, patio lounge, and team car', () => {
+      const outdoorStationIds = [
+        'patio_watch_tv',
+        'patio_sofa_chill',
+        'patio_basketball_hoop',
+        'outside_garden_bench',
+        'tournament_car_seat',
+      ];
+      for (const id of outdoorStationIds) {
+        const station = HOUSE_STATIONS.find(s => s.id === id);
+        expect(station).toBeDefined();
+        expect(station?.area).toBe('hall');
+        expect(station?.seat.y).toBeGreaterThan(14.0);
+      }
+    });
+
+    it('accrues outdoor training benefits when at outdoor TV or hoops stations', () => {
+      const sim = createHouseSim(roster, TEST_FACILITIES, 42);
+      const testPlayer = roster[0];
+      const agent = sim.agents[0];
+
+      // Simulate being at the patio TV station
+      agent.stationId = 'patio_watch_tv';
+      agent.mode = 'working';
+      agent.activity = 'break';
+
+      stepHouseSim(sim, 10.0, roster);
+
+      expect(sim.pendingGains.stats[testPlayer.id]?.macro).toBeGreaterThan(0);
+
+      // Simulate being at hoops station
+      agent.stationId = 'patio_basketball_hoop';
+      stepHouseSim(sim, 10.0, roster);
+      expect(sim.pendingGains.stats[testPlayer.id]?.tiltResistance).toBeGreaterThan(0);
+    });
+  });
 });

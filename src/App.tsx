@@ -10,9 +10,10 @@ import { SponsorsPanel } from './components/sponsors/SponsorsPanel';
 import { MockAdModal } from './components/ads/MockAdModal';
 import { OfflineRewardModal } from './components/ads/OfflineRewardModal';
 import { SponsorDrone } from './components/ads/SponsorDrone';
-import { X, Users, Trophy, Briefcase, UserPlus } from 'lucide-react';
+import { EmpirePanel } from './components/empire/EmpirePanel';
+import { X, Users, Trophy, Briefcase, UserPlus, Building2 } from 'lucide-react';
 
-export type SecondaryOverlay = 'roster' | 'tournaments' | 'sponsors' | 'recruit' | null;
+export type SecondaryOverlay = 'roster' | 'tournaments' | 'sponsors' | 'recruit' | 'empire' | null;
 
 export const App: React.FC = () => {
   // Start the background tick engine, delta calculation & drone spawns
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
             onOpenTournaments={() => setActiveOverlay('tournaments')}
             onOpenSponsors={() => setActiveOverlay('sponsors')}
             onOpenRecruit={() => setActiveOverlay('recruit')}
+            onOpenEmpire={() => setActiveOverlay('empire')}
           />
         </main>
 
@@ -67,6 +69,7 @@ export const App: React.FC = () => {
                     {activeOverlay === 'recruit' && <UserPlus size={18} className="text-indigo-400" />}
                     {activeOverlay === 'tournaments' && <Trophy size={18} className="text-amber-400" />}
                     {activeOverlay === 'sponsors' && <Briefcase size={18} className="text-emerald-400" />}
+                    {activeOverlay === 'empire' && <Building2 size={18} className="text-cyan-400" />}
                   </div>
                   <div>
                     <h2 className="text-base font-black text-white uppercase tracking-tight">
@@ -74,12 +77,14 @@ export const App: React.FC = () => {
                       {activeOverlay === 'recruit' && 'Scout New Talent'}
                       {activeOverlay === 'tournaments' && 'Competitive Tournaments'}
                       {activeOverlay === 'sponsors' && 'Organization Sponsors'}
+                      {activeOverlay === 'empire' && 'Empire & Living World'}
                     </h2>
                     <p className="text-xs text-slate-400">
                       {activeOverlay === 'roster' && 'Manage starting five, roles and player discipline stats'}
                       {activeOverlay === 'recruit' && 'Scout high-potential pro prospects with cash or VIP ads'}
                       {activeOverlay === 'tournaments' && 'Compete for championship trophies, cash, and hype'}
                       {activeOverlay === 'sponsors' && 'Unlock daily streak deals and brand partnerships'}
+                      {activeOverlay === 'empire' && 'District, roster routine, branding, corporate staff, seasons and VIP vanity'}
                     </p>
                   </div>
                 </div>
@@ -99,6 +104,7 @@ export const App: React.FC = () => {
                 {(activeOverlay === 'roster' || activeOverlay === 'recruit') && <RosterPanel />}
                 {activeOverlay === 'tournaments' && <TournamentModal />}
                 {activeOverlay === 'sponsors' && <SponsorsPanel />}
+                {activeOverlay === 'empire' && <EmpirePanel />}
               </div>
             </div>
           </div>

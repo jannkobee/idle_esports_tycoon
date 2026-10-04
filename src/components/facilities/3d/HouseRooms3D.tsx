@@ -3,6 +3,7 @@ import { ThreeEvent } from '@react-three/fiber';
 import { HOUSE_ROOMS } from '../../../core/engine/HouseLayout';
 import { HOUSE_WALLS } from '../../../core/house/houseGeometry';
 import { Facility, FacilityId } from '../../../core/types/facility.types';
+import { useGameStore } from '../../../core/store/useGameStore';
 
 interface HouseRooms3DProps {
   facilities: Record<FacilityId, Facility>;
@@ -15,6 +16,25 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
   selectedRoomId,
   onSelectRoom,
 }) => {
+  const wallpaperStyle = useGameStore((s) => s.houseInterior.wallpaperStyle) ?? 'default';
+
+  const wallColor =
+    wallpaperStyle === 'cyberpunk'
+      ? '#0f172a'
+      : wallpaperStyle === 'carbon'
+      ? '#1e293b'
+      : wallpaperStyle === 'minimalist'
+      ? '#fef3c7'
+      : '#cbd5e1';
+
+  const trimColor =
+    wallpaperStyle === 'cyberpunk'
+      ? '#06b6d4'
+      : wallpaperStyle === 'carbon'
+      ? '#38bdf8'
+      : wallpaperStyle === 'minimalist'
+      ? '#d97706'
+      : '#1e293b';
   return (
     <group position={[0, 0, 0]}>
       {/* Heavy Concrete Foundation Base Plinth */}
@@ -262,7 +282,7 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
             {/* Wall Segment */}
             <mesh position={[cx, wallHeight / 2, cz]} castShadow receiveShadow>
               <boxGeometry args={[wall.rect.w, wallHeight, wall.rect.d]} />
-              <meshStandardMaterial color="#cbd5e1" roughness={0.65} metalness={0.1} />
+              <meshStandardMaterial color={wallColor} roughness={0.65} metalness={0.1} />
             </mesh>
             {/* Baseboard Trim */}
             <mesh position={[cx, 0.08, cz]}>
@@ -273,7 +293,7 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
                   wall.axis === 'y' ? wall.rect.d : wall.rect.d + 0.04,
                 ]}
               />
-              <meshStandardMaterial color="#1e293b" roughness={0.5} />
+              <meshStandardMaterial color={trimColor} roughness={0.5} />
             </mesh>
             {/* Wall Top Aluminum Cap Trim */}
             <mesh position={[cx, wallHeight + 0.02, cz]}>
