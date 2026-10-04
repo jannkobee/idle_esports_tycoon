@@ -102,7 +102,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
           position: DEFAULT_CAMERA_POS,
           fov: 34,
           near: 0.2,
-          far: 140,
+          far: 240,
         }}
         gl={{
           antialias: true,
@@ -110,7 +110,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
         }}
       >
         <color attach="background" args={['#38bdf8']} />
-        <fog attach="fog" args={['#bae6fd', 80, 180]} />
+        <fog attach="fog" args={['#bae6fd', 110, 240]} />
 
         {/* Ambient & Key Lighting */}
         <ambientLight

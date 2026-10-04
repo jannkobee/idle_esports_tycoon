@@ -546,7 +546,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                 {!facility.isUnlocked ? (
                   <span className="flex items-center gap-1 text-amber-400 font-bold">
-                    <Flame size={12} /> {hype} / {facility.requiredHype} Hype
+                    <Flame size={12} /> {Math.floor(hype).toLocaleString()} / {facility.requiredHype.toLocaleString()} Hype
                   </span>
                 ) : (
                   <span className="text-slate-400">
