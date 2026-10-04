@@ -2,6 +2,17 @@
 
 Reviewed October 4, 2026.
 
+## Verified baseline — living world, shop visits, branches, camera
+
+The current working tree includes the branch network, shop-visit flow, and viewport camera controls. These features are part of the currently verified baseline and the project passes the repo's test suite and TypeScript/Vite production build.
+
+- Branch definitions for Los Angeles, Seoul, and Berlin are present, with persisted branch state, open/upgrade actions, an Empire drawer section, and branch income contributing to online/offline calculations.
+- Dynasty Mart and GG Boba break stations, a marked crosswalk corridor, district-tier gating, shop-visit selection, and the associated energy/tilt benefits are included in the current scene.
+- The 3D view supports orbit, pan, zoom, and reset controls through the existing camera rig, with the default framing preserved.
+- Verified baseline: `npm.cmd test -- --run` passes 71 tests and `npm.cmd run build` completes successfully on the current code. Mobile viewport checks (~390px) remain a manual validation step when visual tuning is being performed.
+
+This section documents the active, confirmed state of the repository as it is today. Preserve schema-v1 save compatibility when making future live-world changes.
+
 ## Current prototype
 
 Facilities, an automatic team room with visible generated players, persistent economy, instant stat training, genre-specific scouting, simplified best-of-three tournaments, five-second mock ads, offline rewards, sponsor drones, daily sponsor payouts, and the Esports Empire & Living World milestone.
@@ -10,16 +21,26 @@ Facilities, an automatic team room with visible generated players, persistent ec
 
 - Permanent vibrant Californian daylight replaces the player-facing day/night control; the house uses a cerulean sky and long, pale-blue distance fog.
 - The 3D exterior now contains an attached glass garage with a three-tier fleet, crosswalk, Dynasty Mart, park/plaza, tech promenade, and fan walkers whose density responds to roster fans.
-- The Empire mobile drawer provides district, fleet, and HQ evolution; an editable five-block team routine; player personality display and outdoor Treat Runs with an Inspired buff; 12-crest live branding and jersey colors; CEO/GM/Ops/CMO hires; the Spring → MSI → Summer → Worlds calendar; and a persisted VIP vanity inventory.
+- The Empire mobile drawer provides district, fleet, and HQ evolution; a staff-designed five-block routine; autonomous player personalities and outdoor sports; 12-crest live branding and jersey colors; a staff recruitment market for coaches, managers, and nutritionists; the Spring → MSI → Summer → Worlds calendar; and a persisted VIP vanity inventory.
+
+- Staff hiring now affects gameplay directly: discipline coaches choose match tactics and ban a map before each round; executive managers provide tiered discount bonuses on purchases and deals; nutritionists apply recovery, endurance, or focus boosts that improve morale, energy, and training efficiency.
 - District tiers improve automatic income, sponsor potential, mood recovery, and visible fan density. All additions use defaults during schema-v1 save hydration.
+- The Cosmetic Store lists 13 purchasable items across wallpaper, flooring, facade, and decorative-object categories. Energy Cans unlock them; owned house finishes can be equipped or reset to the free default. Wall, floor, facade, neon, arcade, pedestal, and vehicle-wrap purchases have corresponding 3D visuals but no gameplay bonuses. Old selected wallpapers are grandfathered during hydration. The cutaway's locked-room surfaces and front glass frames were lightened to remove opaque black patches.
+- Android-only Google Play checkout is a prepared host bridge, not a live payment integration: the repository has no Android shell, Play Console catalog, or server-side purchase verification. The bridge must return a server-verified matching product entitlement before the app grants an item. A normal browser offers Energy Cans only.
 
 ## Player cards and scheduled circuit
 
 - Players carry age, a role for their discipline (CS style AWP/Rifler/IGL and MOBA Top/Jungler/Mid/Bottom/Support), six card attributes, an overall rating, and an individual potential ceiling. Older saves derive missing card attributes from the original four stats.
 - Cash card packs reveal a random card with disclosed 45/28/15/7/4/1 percent tier odds from Bronze through GOAT. A young Scaling Prodigy can have a higher ceiling than their card tier normally permits. Manual and ambient training respect the individual cap.
-- The Tournament view offers a single persisted eight-team bracket per event, including four rival fixtures, map veto, selectable tactic, and individual map/game scores. Map outcomes use role-weighted lineup attributes against ranked opponents. The format is BO3 for the first two rounds and BO5 for the final; results, elimination, and championship rewards persist. The old scripted/ad-driven match flow is removed.
+- The Tournament view offers a single persisted eight-team bracket per event, including four rival fixtures, coach-led map veto and tactic, and individual map/game scores. Map outcomes use role-weighted lineup attributes against ranked opponents. The format is BO3 for the first two rounds and BO5 for the final; results, elimination, and championship rewards persist. The old scripted/ad-driven match flow is removed.
 - Duplicate bench cards convert to development points; points raise one of six attributes up to that card's individual potential. Age and remaining potential gap affect simulated development speed.
-- Each discipline now has a saved starting lineup. The roster screen supports slot assignment, benching, swaps, auto-fill, off-role penalties, and a live power preview. The Tournament screen shows the current lineup before entry. Older saves automatically field eligible cards until a lineup is edited.
+- Coaches select eligible starters per discipline using role fit, card ratings, form, and style. The roster and Tournament screens report their selection; players no longer assign slots or pick match tactics. Old manual lineup data can remain in schema-v1 saves but no longer drives matches.
+
+## Autonomy and facility-progression invariants
+
+- The player controls recruitment, card development, and purchases—not starting lineups, match strategy, or the routine. Coach/operations hires recompute the roster's five-block plan. Simulated pros use that plan as weighted guidance, can rest when tired, and may walk to the backyard basketball court or football pitch according to their preference.
+- Every room, including the scrim lab and cafeteria, starts locked on a new save. The organization retains baseline income before unlocking a room, so play cannot deadlock. Cash/hype unlocks and completed room-funding ads are alternative paths; four completed ads fully fund a room, while skipped ads contribute nothing.
+- Save key and version remain `esports_dynasty_save_v1` / 1. Hydration supplies missing room, funding, staff, sports, and managed-schedule fields without revoking rooms that an older save already unlocked.
 
 ## Player-first idle direction
 
@@ -53,6 +74,7 @@ The store is unified with Zustand persistence. Ads are store-driven; IAdService 
 - Added ignored-drone expiry; opened offers remain available during ads.
 - Brightened outdoor scene with lush grounds, flowers, street life, and dynamic day/sunset/night skybox.
 - Implemented coach hiring conditions based on roster disciplines and facility levels.
+- Added a staff recruitment market where coaches, managers, and nutritionists can be hired to replace slot-based incumbents and stack their bonuses.
 - Added Halftime Crisis clutch hero play and tactical timeouts.
 - Added interior wallpaper switching and lounge TV morale upgrades.
 
@@ -65,7 +87,7 @@ The store is unified with Zustand persistence. Ads are store-driven; IAdService 
 
 ## Verification
 
-`npm.cmd test -- --run` passes 58 tests covering formulas, store transitions, save compatibility, card development, tournament bracket mechanics, automatic income, portrait allocation, outdoor stations, and house simulation routes and gains. `npm.cmd run build` verifies strict TypeScript compilation and production asset bundling. Mobile viewport checks (~390px) remain a manual verification task.
+`npm.cmd test -- --run` passes 71 tests covering formulas, store transitions, cosmetic ownership and Android billing gating, save compatibility, coach lineup and routine choices, sports autonomy, room/ad funding, card development, and tournament brackets. `npm.cmd run build` verifies strict TypeScript compilation and production bundling. Mobile viewport and 3D appearance checks (~390px) remain manual verification tasks; no browser automation is configured here.
 
 Suggested browser checks: claim offline rewards through an ad; skip and retry scouting; recruit each genre; resume after boost expiry; reload an unclaimed offline reward; watch five sponsor clips to inspect payouts.
 

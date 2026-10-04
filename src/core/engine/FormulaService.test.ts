@@ -60,6 +60,10 @@ describe('FormulaService', () => {
     expect(boostedIncome).toBe(normalIncome * 2);
   });
 
+  it('keeps baseline income positive before any room is unlocked', () => {
+    expect(FormulaService.calculateTotalIncomePerSec([], false, 0)).toBe(1);
+  });
+
   it('calculates offline earnings with 3x ad boost and respects 8h cap', () => {
     const now = 10000000;
     const oneHourAgo = now - (3600 * 1000);

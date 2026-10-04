@@ -7,26 +7,35 @@ import { AdPlacement, AdBoostStatus } from '../types/ad.types';
 import { FormulaService } from '../engine/FormulaService';
 import { getPortraitIndex, PLAYER_IDENTITIES } from '../engine/PlayerAppearance';
 import { CARD_PACK_COST, LINEUP_SLOTS, TeamLineups, autoFillLineup, developmentCost, developmentRate, duplicateKey, duplicateValue, generateCard, getCardAttributes, isMatchEligible, lineupPower, resolveLineup, trainingCeiling } from '../cards/CardService';
-import { CircuitEvent, MAP_POOLS, MATCH_TACTICS, MatchTactic, TOURNAMENTS, createCircuit, playCircuitRound } from '../tournaments/CircuitService';
+import { CircuitEvent, TOURNAMENTS, createCircuit, playCircuitRound } from '../tournaments/CircuitService';
+import { StaffCandidate, coachPlan, coachSelectLineup, generateStaffMarket, managerDiscount, managerRatingBonus, nutritionBonus, staffDailySchedule, staffSlot } from '../staff/StaffService';
+import { BRANCHES, BranchId, EsportsBranch, branchIncomePerSecond, branchUpgradeCost } from '../empire/BranchService';
 import {
   DistrictTier, ExecutiveRole, ExecutiveStaff, FacilityTier, FleetTier, INITIAL_BRANDING,
   INITIAL_EXECUTIVES, INITIAL_SEASON, OrgBranding, PlayerPersonality, ScheduleBlock,
-  SeasonCalendar, VipItemId, districtBonuses, nextSeasonStage,
+  SeasonCalendar, SportsTier, VipItemId, VIP_ITEMS, districtBonuses, nextSeasonStage,
   scheduleSynergy,
 } from '../empire/EmpireService';
 
 export type TimeOfDay = 'day' | 'sunset' | 'night';
 export type WallpaperStyle = 'default' | 'cyberpunk' | 'carbon' | 'minimalist';
+export type FlooringStyle = 'default' | 'oak' | 'marble' | 'neon';
+export type FacadeStyle = 'default' | 'sandstone' | 'glass' | 'carbon';
 
 export interface HouseInteriorState {
   wallpaperStyle: WallpaperStyle;
+  flooringStyle?: FlooringStyle;
+  facadeStyle?: FacadeStyle;
   loungeTvLevel: number;
 }
 
 export interface EmpireState {
+  branches?: EsportsBranch[];
   districtTier: DistrictTier;
   fleetTier: FleetTier;
   facilityTier: FacilityTier;
+  basketballTier: SportsTier;
+  footballTier: SportsTier;
   branding: OrgBranding;
   schedule: ScheduleBlock[];
   executives: ExecutiveStaff[];
@@ -35,9 +44,12 @@ export interface EmpireState {
 }
 
 export const INITIAL_EMPIRE: EmpireState = {
+  branches: [],
   districtTier: 1,
   fleetTier: 1,
   facilityTier: 1,
+  basketballTier: 1,
+  footballTier: 1,
   branding: INITIAL_BRANDING,
   schedule: ['scrim', 'vod', 'gym', 'outdoor', 'rest'],
   executives: INITIAL_EXECUTIVES,
@@ -47,8 +59,12 @@ export const INITIAL_EMPIRE: EmpireState = {
 
 export const INITIAL_HOUSE_INTERIOR: HouseInteriorState = {
   wallpaperStyle: 'default',
+  flooringStyle: 'default',
+  facadeStyle: 'default',
   loungeTvLevel: 1,
 };
+
+const INITIAL_STAFF_SEED = Math.floor(Math.random() * 0xffffffff);
 
 export interface OfflineModalData {
   isOpen: boolean;
@@ -276,6 +292,7 @@ interface GameStoreState {
 
   // Facilities
   facilities: Record<FacilityId, Facility>;
+  roomFunding: Partial<Record<FacilityId, number>>;
 
   // Roster
   roster: ProPlayer[];
@@ -299,6 +316,7 @@ interface GameStoreState {
   // Actions
   upgradeFacility: (id: FacilityId) => boolean;
   unlockFacility: (id: FacilityId) => boolean;
+  fundFacilityWithAd: (id: FacilityId) => boolean;
   tick: (currentTimestamp: number) => void;
   checkOfflineCatchup: () => void;
   claimOfflineReward: (tripleWithAd: boolean) => void;
@@ -320,6 +338,11 @@ interface GameStoreState {
   // Coaches & Disciplines
   coaches: Coach[];
   hireCoach: (coachId: string) => boolean;
+  staffMarket: StaffCandidate[];
+  hiredStaff: StaffCandidate[];
+  staffMarketSeed: number;
+  refreshStaffMarket: () => boolean;
+  hireStaff: (candidateId: string) => boolean;
 
   // Day & Night Simulation
   timeOfDay: TimeOfDay;
@@ -328,15 +351,19 @@ interface GameStoreState {
 
   // House Interior & Decor
   houseInterior: HouseInteriorState;
-  setWallpaperStyle: (style: WallpaperStyle) => void;
+  setWallpaperStyle: (style: WallpaperStyle) => boolean;
+  equipCosmetic: (itemId: VipItemId) => boolean;
+  resetHouseFinish: (category: 'Wallpaper' | 'Flooring' | 'Facade') => void;
+  grantVerifiedCosmetic: (itemId: VipItemId) => boolean;
   upgradeLoungeTv: () => boolean;
 
   // Empire & living world (optional defaults maintain v1 save compatibility)
   empire: EmpireState;
   upgradeDistrict: () => boolean;
+  openBranch: (id: BranchId) => boolean;
+  upgradeBranch: (id: BranchId) => boolean;
   upgradeFleet: () => boolean;
   upgradeFacilityTier: () => boolean;
-  setScheduleBlock: (slot: number, block: ScheduleBlock) => void;
   takeOutdoorBreak: (playerId: string) => void;
   setBranding: (branding: Partial<OrgBranding>) => void;
   hireExecutive: (role: ExecutiveRole) => boolean;
@@ -354,8 +381,6 @@ interface GameStoreState {
   activeTournamentMatch: ActiveTournamentMatch | null;
   circuitEvent: CircuitEvent | null;
   startCircuit: (discipline: EsportsDiscipline, now?: number, tournamentId?: string) => boolean;
-  setCircuitVeto: (map: string) => boolean;
-  setCircuitTactic: (tactic: MatchTactic) => boolean;
   playNextCircuitRound: (now?: number) => boolean;
   recordTournamentOutcome: (won: boolean, tourneyId: string, opponentId?: string) => void;
   setTournamentUnderway: (underway: boolean) => void;
@@ -370,13 +395,13 @@ const INITIAL_FACILITIES: Record<FacilityId, Facility> = {
     name: 'PC Scrim Lab',
     category: 'training',
     description: 'Basement practice rigs for team aim routines and scrims.',
-    level: 1,
+    level: 0,
     baseCost: 15,
     costMultiplier: 1.15,
     baseIncomePerSec: 1,
     icon: 'Monitor',
-    isUnlocked: true,
-    unlockCost: 0,
+    isUnlocked: false,
+    unlockCost: 50,
     requiredHype: 0,
   },
   streaming_pod: {
@@ -435,6 +460,12 @@ const INITIAL_FACILITIES: Record<FacilityId, Facility> = {
     unlockCost: 50000,
     requiredHype: 2000,
   },
+  cafeteria: {
+    id: 'cafeteria', name: 'Pro Dining & Nutrition Bar', category: 'wellness',
+    description: 'Chef-prepared meals for the whole roster.', level: 0,
+    baseCost: 8000, costMultiplier: 1.18, baseIncomePerSec: 350,
+    icon: 'Coffee', isUnlocked: false, unlockCost: 15000, requiredHype: 600,
+  },
 };
 
 const INITIAL_ROSTER: ProPlayer[] = [
@@ -455,6 +486,8 @@ const INITIAL_ROSTER: ProPlayer[] = [
       tiltResistance: 55,
     },
     personality: 'grinder',
+    dailySchedule: INITIAL_EMPIRE.schedule,
+    sportsPreference: 'basketball',
     age: 20,
     potential: 88,
     position: 'rifler',
@@ -473,6 +506,7 @@ export const useGameStore = create<GameStoreState>()(
       lastSavedTimestamp: Date.now(),
 
       facilities: INITIAL_FACILITIES,
+      roomFunding: {},
       roster: INITIAL_ROSTER,
       developmentPoints: 0,
       teamLineups: {},
@@ -490,6 +524,9 @@ export const useGameStore = create<GameStoreState>()(
       activeTournamentMatch: null,
       circuitEvent: null,
       coaches: INITIAL_COACHES,
+      staffMarket: generateStaffMarket(INITIAL_STAFF_SEED),
+      hiredStaff: [],
+      staffMarketSeed: INITIAL_STAFF_SEED,
       timeOfDay: 'day',
       houseInterior: INITIAL_HOUSE_INTERIOR,
       empire: INITIAL_EMPIRE,
@@ -516,13 +553,14 @@ export const useGameStore = create<GameStoreState>()(
       },
 
       unlockFacility: (id: FacilityId) => {
-        const { facilities, cash, hype } = get();
+        const { facilities, cash, hype, roomFunding } = get();
         const facility = facilities[id];
         if (!facility || facility.isUnlocked) return false;
-        if (cash < facility.unlockCost || hype < facility.requiredHype) return false;
+        const cost = Math.max(0, facility.unlockCost - (roomFunding[id] ?? 0));
+        if (cash < cost || (hype < facility.requiredHype && cost > 0)) return false;
 
         set({
-          cash: cash - facility.unlockCost,
+          cash: cash - cost,
           facilities: {
             ...facilities,
             [id]: {
@@ -532,6 +570,16 @@ export const useGameStore = create<GameStoreState>()(
             },
           },
         });
+        return true;
+      },
+
+      fundFacilityWithAd: id => {
+        const state = get();
+        const facility = state.facilities[id];
+        if (!facility || facility.isUnlocked) return false;
+        const funded = Math.min(facility.unlockCost, (state.roomFunding[id] ?? 0) + Math.ceil(facility.unlockCost / 4));
+        set({ roomFunding: { ...state.roomFunding, [id]: funded } });
+        if (funded >= facility.unlockCost) return get().unlockFacility(id);
         return true;
       },
 
@@ -551,10 +599,10 @@ export const useGameStore = create<GameStoreState>()(
           Object.values(facilities),
           false,
           hype
-        );
+        ) + branchIncomePerSecond(empire?.branches);
 
         const activeEmpire = empire ?? INITIAL_EMPIRE;
-        const marketingMultiplier = activeEmpire.executives.some(staff => staff.role === 'cmo' && staff.hired) ? 1.06 : 1;
+        const marketingMultiplier = activeEmpire.executives.some(staff => staff.role === 'cmo' && staff.hired) ? 1.06 + managerRatingBonus(get().hiredStaff, 'cmo') : 1;
         const earned = FormulaService.calculateIntervalIncome(lastSavedTimestamp, currentTimestamp, incomePerSec, boostExpiresAt)
           * districtBonuses(activeEmpire.districtTier).incomeMultiplier * marketingMultiplier;
 
@@ -572,7 +620,7 @@ export const useGameStore = create<GameStoreState>()(
           Object.values(facilities),
           false,
           hype
-        );
+        ) + branchIncomePerSecond(get().empire?.branches);
 
         const offline = FormulaService.calculateOfflineEarnings(lastSavedTimestamp, now, incomePerSec);
         offline.baseCashEarned = FormulaService.calculateIntervalIncome(
@@ -627,7 +675,7 @@ export const useGameStore = create<GameStoreState>()(
           const watched = (get().lastAdResetDate === today ? get().dailyAdsWatched : 0) + 1;
           const rawCashReward = watched === 3 ? 5000 : watched === 5 ? 50000 : 0;
           const empire = get().empire ?? INITIAL_EMPIRE;
-          const ceoBonus = empire.executives.some(staff => staff.role === 'ceo' && staff.hired) ? 1.2 : 1;
+          const ceoBonus = empire.executives.some(staff => staff.role === 'ceo' && staff.hired) ? 1.2 + managerRatingBonus(get().hiredStaff, 'ceo') : 1;
           const cashReward = rawCashReward * districtBonuses(empire.districtTier).sponsorMultiplier * ceoBonus;
           set(state => ({
             dailyAdsWatched: watched,
@@ -677,7 +725,7 @@ export const useGameStore = create<GameStoreState>()(
       scoutPlayer: (isVipAd: boolean, discipline: EsportsDiscipline = 'fps') => {
         const { cash, roster, empire } = get();
         const gmHired = (empire ?? INITIAL_EMPIRE).executives.some(staff => staff.role === 'gm' && staff.hired);
-        const scoutCost = isVipAd ? 0 : Math.round(500 * (gmHired ? 0.8 : 1));
+        const scoutCost = isVipAd ? 0 : Math.round(500 * (1 - Math.max(gmHired ? 0.2 : 0, managerDiscount(get().hiredStaff, 'gm'))));
         if (!isVipAd && cash < scoutCost) return null;
 
         const usedPortraits = new Set(roster.map(p => p.portraitIndex));
@@ -777,6 +825,8 @@ export const useGameStore = create<GameStoreState>()(
           age: 18 + Math.floor(Math.random() * 15),
           potential: rarity === 'diamond' ? 96 : rarity === 'gold' ? 88 : rarity === 'silver' ? 78 : 69,
           position: discipline === 'fps' ? 'rifler' : discipline === 'moba' ? 'mid' : discipline === 'br' ? 'fragger' : 'fighter',
+          dailySchedule: staffDailySchedule(get().hiredStaff),
+          sportsPreference: Math.random() < 0.4 ? 'basketball' : Math.random() < 0.75 ? 'football' : 'none',
         };
         newPlayer.potential = Math.max(newPlayer.potential ?? 70, ...Object.values(newPlayer.stats));
 
@@ -792,11 +842,12 @@ export const useGameStore = create<GameStoreState>()(
       buyCardPack: (discipline) => {
         const state = get();
         const gmHired = (state.empire ?? INITIAL_EMPIRE).executives.some(staff => staff.role === 'gm' && staff.hired);
-        const cost = Math.round(CARD_PACK_COST * (gmHired ? 0.8 : 1));
+        const cost = Math.round(CARD_PACK_COST * (1 - Math.max(gmHired ? 0.2 : 0, managerDiscount(state.hiredStaff, 'gm'))));
         if (state.cash < cost) return null;
         const card = generateCard(discipline, state.roster.length);
-        set({ cash: state.cash - cost, roster: [...state.roster, card] });
-        return card;
+        const signed = { ...card, dailySchedule: staffDailySchedule(state.hiredStaff) };
+        set({ cash: state.cash - cost, roster: [...state.roster, signed] });
+        return signed;
       },
 
       assignLineupSlot: (discipline, slotId, playerId) => {
@@ -821,7 +872,7 @@ export const useGameStore = create<GameStoreState>()(
         const card = state.roster.find(player => player.id === playerId);
         if (!card || state.roster.filter(player => duplicateKey(player) === duplicateKey(card)).length < 2) return 0;
         const activeIds = new Set((Object.keys(DISCIPLINE_INFO) as EsportsDiscipline[])
-          .flatMap(discipline => Object.values(resolveLineup(state.roster, discipline, state.teamLineups[discipline]))));
+          .flatMap(discipline => Object.values(coachSelectLineup(state.roster, discipline, state.hiredStaff))));
         if (activeIds.has(playerId)) return 0;
         const earned = duplicateValue(card);
         set({ roster: state.roster.filter(player => player.id !== playerId), developmentPoints: state.developmentPoints + earned });
@@ -850,7 +901,7 @@ export const useGameStore = create<GameStoreState>()(
         const player = roster.find(p => p.id === playerId);
         if (!player) return false;
 
-        const renewalCost =
+        const baseRenewalCost =
           player.rarity === 'diamond'
             ? 5000
             : player.rarity === 'gold'
@@ -859,6 +910,7 @@ export const useGameStore = create<GameStoreState>()(
             ? 800
             : 300;
 
+        const renewalCost = Math.round(baseRenewalCost * (1 - managerDiscount(get().hiredStaff, 'gm')));
         if (cash < renewalCost) return false;
 
         set({
@@ -901,6 +953,31 @@ export const useGameStore = create<GameStoreState>()(
         return true;
       },
 
+      refreshStaffMarket: () => {
+        const state = get();
+        if (state.cash < 500) return false;
+        const seed = state.staffMarketSeed + 1;
+        set({ cash: state.cash - 500, staffMarketSeed: seed, staffMarket: generateStaffMarket(seed) });
+        return true;
+      },
+
+      hireStaff: candidateId => {
+        const state = get();
+        const candidate = state.staffMarket.find(person => person.id === candidateId);
+        if (!candidate || state.cash < candidate.hireCost) return false;
+        const slot = staffSlot(candidate);
+        const hiredStaff = [...state.hiredStaff.filter(person => staffSlot(person) !== slot), candidate];
+        const empire = state.empire ?? INITIAL_EMPIRE;
+        set({ cash: state.cash - candidate.hireCost,
+          hiredStaff,
+          roster: state.roster.map(player => ({ ...player, dailySchedule: staffDailySchedule(hiredStaff) })),
+          staffMarket: state.staffMarket.filter(person => person.id !== candidateId),
+          empire: { ...empire, schedule: staffDailySchedule(hiredStaff),
+            executives: candidate.kind === 'manager' ? empire.executives.map(person => person.role === candidate.executiveRole ? { ...person, name: candidate.name, hired: true } : person) : empire.executives },
+        });
+        return true;
+      },
+
       setTimeOfDay: (time: TimeOfDay) => {
         set({ timeOfDay: time });
       },
@@ -913,12 +990,40 @@ export const useGameStore = create<GameStoreState>()(
       },
 
       setWallpaperStyle: (wallpaperStyle: WallpaperStyle) => {
+        if (wallpaperStyle !== 'default' && !get().empire.vipInventory.includes(`wall_${wallpaperStyle}` as VipItemId)) return false;
         set(state => ({
           houseInterior: {
             ...(state.houseInterior ?? INITIAL_HOUSE_INTERIOR),
             wallpaperStyle,
           },
         }));
+        return true;
+      },
+
+      equipCosmetic: (itemId) => {
+        const state = get();
+        if (!state.empire.vipInventory.includes(itemId)) return false;
+        const [category, style] = itemId.split('_');
+        if (category === 'wall') return state.setWallpaperStyle(style as WallpaperStyle);
+        if (category === 'floor') set({ houseInterior: { ...state.houseInterior, flooringStyle: style as FlooringStyle } });
+        else if (category === 'facade') set({ houseInterior: { ...state.houseInterior, facadeStyle: style as FacadeStyle } });
+        else return false;
+        return true;
+      },
+
+      resetHouseFinish: (category) => set(state => ({ houseInterior: {
+        ...state.houseInterior,
+        ...(category === 'Wallpaper' ? { wallpaperStyle: 'default' as const } : {}),
+        ...(category === 'Flooring' ? { flooringStyle: 'default' as const } : {}),
+        ...(category === 'Facade' ? { facadeStyle: 'default' as const } : {}),
+      } })),
+
+      grantVerifiedCosmetic: (itemId) => {
+        if (!VIP_ITEMS.some(item => item.id === itemId)) return false;
+        const state = get();
+        if (state.empire.vipInventory.includes(itemId)) return true;
+        set({ empire: { ...state.empire, vipInventory: [...state.empire.vipInventory, itemId] } });
+        return true;
       },
 
       upgradeLoungeTv: () => {
@@ -956,6 +1061,24 @@ export const useGameStore = create<GameStoreState>()(
         return true;
       },
 
+      openBranch: (id) => {
+        const definition = BRANCHES.find(branch => branch.id === id);
+        const state = get();
+        if (!definition || state.empire.branches?.some(branch => branch.id === id) || state.cash < definition.unlockCost) return false;
+        set({ cash: state.cash - definition.unlockCost, empire: { ...state.empire, branches: [...(state.empire.branches ?? []), { id, tier: 1 }] } });
+        return true;
+      },
+
+      upgradeBranch: (id) => {
+        const state = get();
+        const branch = state.empire.branches?.find(candidate => candidate.id === id);
+        if (!branch || branch.tier >= 3) return false;
+        const cost = branchUpgradeCost(branch);
+        if (state.cash < cost) return false;
+        set({ cash: state.cash - cost, empire: { ...state.empire, branches: state.empire.branches!.map(candidate => candidate.id === id ? { ...candidate, tier: (candidate.tier + 1) as 1 | 2 | 3 } : candidate) } });
+        return true;
+      },
+
       upgradeFleet: () => {
         const empire = get().empire ?? INITIAL_EMPIRE;
         if (empire.fleetTier >= 3) return false;
@@ -974,25 +1097,16 @@ export const useGameStore = create<GameStoreState>()(
         return true;
       },
 
-      setScheduleBlock: (slot, block) => {
-        if (slot < 0 || slot > 4) return;
-        set(state => {
-          const empire = state.empire ?? INITIAL_EMPIRE;
-          const schedule = [...empire.schedule];
-          schedule[slot] = block;
-          return { empire: { ...empire, schedule } };
-        });
-      },
-
       takeOutdoorBreak: (playerId) => {
         const empire = get().empire ?? INITIAL_EMPIRE;
         const bonus = districtBonuses(empire.districtTier);
+        const nutrition = nutritionBonus(get().hiredStaff);
         const isSocialLead = get().roster.find(player => player.id === playerId)?.personality === 'socialite';
         set(state => ({
           roster: state.roster.map(player => player.id === playerId ? {
             ...player,
-            mood: Math.min(100, (player.mood ?? 75) + bonus.moodRecovery + 8),
-            energy: Math.min(100, (player.energy ?? 70) + 15),
+            mood: Math.min(100, (player.mood ?? 75) + bonus.moodRecovery + 8 + nutrition.mood),
+            energy: Math.min(100, (player.energy ?? 70) + 15 + nutrition.energy),
             inspiredUntil: Date.now() + 10 * 60 * 1000,
           } : isSocialLead && player.role !== 'inactive' ? { ...player, mood: Math.min(100, (player.mood ?? 75) + 4) } : player),
         }));
@@ -1044,10 +1158,10 @@ export const useGameStore = create<GameStoreState>()(
       },
 
       buyVipItem: (itemId) => {
-        const itemCosts: Record<VipItemId, number> = { rgb_neon: 40, luxury_arcade: 65, hypercar_wrap: 90, gold_pedestal: 120 };
+        const item = VIP_ITEMS.find(candidate => candidate.id === itemId);
         const empire = get().empire ?? INITIAL_EMPIRE;
-        if (empire.vipInventory.includes(itemId) || get().energyCans < itemCosts[itemId]) return false;
-        set(state => ({ energyCans: state.energyCans - itemCosts[itemId], empire: { ...(state.empire ?? INITIAL_EMPIRE), vipInventory: [...empire.vipInventory, itemId] } }));
+        if (!item || empire.vipInventory.includes(itemId) || get().energyCans < item.cost) return false;
+        set(state => ({ energyCans: state.energyCans - item.cost, empire: { ...(state.empire ?? INITIAL_EMPIRE), vipInventory: [...empire.vipInventory, itemId] } }));
         return true;
       },
 
@@ -1099,7 +1213,7 @@ export const useGameStore = create<GameStoreState>()(
               if (player.personality === 'grinder' && (stat === 'aim' || stat === 'macro')) multiplier *= 1.25;
               if (player.personality === 'tactician' && stat === 'macro') multiplier *= 1.35;
               if (player.personality === 'scaling') multiplier *= (player.age ?? 22) <= 22 ? 1.5 : 1.15;
-              multiplier *= developmentRate(player);
+              multiplier *= developmentRate(player) * (1 + nutritionBonus(state.hiredStaff).training);
               if ((player.inspiredUntil ?? 0) > Date.now()) multiplier *= 1.15;
               const total = (trainingProgress[stat] ?? 0) + (statGains[stat] ?? 0) * multiplier;
               stats[stat] = Math.min(cap, stats[stat] + Math.floor(total));
@@ -1108,7 +1222,7 @@ export const useGameStore = create<GameStoreState>()(
             const attributes = getCardAttributes(player);
             return { ...player, stats, trainingProgress,
               cardAttributes: { ...attributes, mechanics: stats.aim, gameSense: stats.macro, teamwork: stats.comms, clutch: stats.tiltResistance },
-              energy: opsHired ? Math.max(25, player.energy ?? 80) : player.energy };
+              energy: opsHired ? Math.max(25 + Math.round(managerRatingBonus(state.hiredStaff, 'ops') * 100), player.energy ?? 80) : player.energy };
           }),
         });
         });
@@ -1158,6 +1272,7 @@ export const useGameStore = create<GameStoreState>()(
           legacyTrophies: legacyTrophies + earnedTrophies,
           season: season + 1,
           facilities: INITIAL_FACILITIES,
+          roomFunding: {},
           boostExpiresAt: 0,
           lifetimeEarnings: 100,
           lastSavedTimestamp: Date.now(),
@@ -1166,6 +1281,9 @@ export const useGameStore = create<GameStoreState>()(
           activeTournamentMatch: null,
           circuitEvent: null,
           coaches: INITIAL_COACHES,
+          staffMarket: generateStaffMarket(season + 1),
+          staffMarketSeed: season + 1,
+          hiredStaff: [],
           timeOfDay: 'day',
           houseInterior: INITIAL_HOUSE_INTERIOR,
           empire: INITIAL_EMPIRE,
@@ -1187,24 +1305,8 @@ export const useGameStore = create<GameStoreState>()(
           .map(team => ({ id: team.id, name: team.name, rating: team.rating }));
         const circuit = createCircuit(discipline, opponents, now, config);
         if (state.cash < circuit.entryFee) return false;
-        if (lineupPower(state.roster, discipline, state.teamLineups[discipline]) <= 0) return false;
+        if (lineupPower(state.roster, discipline, coachSelectLineup(state.roster, discipline, state.hiredStaff)) <= 0) return false;
         set({ cash: state.cash - circuit.entryFee, circuitEvent: circuit });
-        return true;
-      },
-
-      setCircuitVeto: map => {
-        const event = get().circuitEvent;
-        if (!event || event.status !== 'active' || !MAP_POOLS[event.discipline].includes(map)) return false;
-        const rounds = event.rounds.map((round, index) => index === event.currentRound ? { ...round, bannedMap: map } : round);
-        set({ circuitEvent: { ...event, rounds } });
-        return true;
-      },
-
-      setCircuitTactic: tactic => {
-        const event = get().circuitEvent;
-        if (!event || event.status !== 'active' || !MATCH_TACTICS.some(item => item.id === tactic)) return false;
-        const rounds = event.rounds.map((round, index) => index === event.currentRound ? { ...round, tactic } : round);
-        set({ circuitEvent: { ...event, rounds } });
         return true;
       },
 
@@ -1212,11 +1314,15 @@ export const useGameStore = create<GameStoreState>()(
         const state = get();
         if (!state.circuitEvent) return false;
         const index = state.circuitEvent.currentRound;
-        const next = playCircuitRound(state.circuitEvent, state.roster, now, Math.random, state.teamLineups[state.circuitEvent.discipline]);
+        const round = state.circuitEvent.rounds[index];
+        if (!round || now < round.scheduledAt) return false;
+        const plan = coachPlan(state.hiredStaff, state.circuitEvent.discipline, round.opponent.id);
+        const prepared = { ...state.circuitEvent, rounds: state.circuitEvent.rounds.map((item, itemIndex) => itemIndex === index ? { ...item, tactic: plan.tactic, bannedMap: plan.bannedMap } : item) };
+        const next = playCircuitRound(prepared, state.roster, now, Math.random, coachSelectLineup(state.roster, state.circuitEvent.discipline, state.hiredStaff), plan.bonus);
         if (!next) return false;
-        const round = next.rounds[index];
+        const resultRound = next.rounds[index];
         set({ circuitEvent: next });
-        get().recordTournamentOutcome(round.result!.won, next.id, round.opponent.id);
+        get().recordTournamentOutcome(resultRound.result!.won, next.id, resultRound.opponent.id);
         if (next.status === 'won') {
           set(current => ({ cash: current.cash + next.prize, lifetimeEarnings: current.lifetimeEarnings + next.prize, hype: current.hype + (next.hypePrize ?? 100) }));
           get().advanceSeasonStage(true);
@@ -1347,32 +1453,61 @@ export const useGameStore = create<GameStoreState>()(
       // Old v1 saves included modal flags but could not serialize callbacks.
       merge: (saved, current) => {
         const { tapPower: _tapPower, tapScrim: _tapScrim, ...previous } = saved as Partial<GameStoreState> & { tapPower?: number; tapScrim?: unknown };
+        const migratedStaff: StaffCandidate[] = previous.hiredStaff ?? [
+          ...(previous.coaches ?? []).filter(coach => coach.hired && coach.discipline !== 'wellness').map(coach => ({
+            id: coach.id, name: coach.name, kind: 'coach' as const, tier: 'regional' as const, rating: 65,
+            hireCost: coach.hireCost, discipline: coach.discipline as EsportsDiscipline,
+            tactic: coach.discipline === 'moba' ? 'macro' as const : 'aggressive' as const,
+          })),
+          ...(previous.coaches ?? []).filter(coach => coach.hired && coach.discipline === 'wellness').map(coach => ({
+            id: coach.id, name: coach.name, kind: 'nutritionist' as const, tier: 'regional' as const, rating: 65,
+            hireCost: coach.hireCost, nutritionStyle: 'recovery' as const,
+          })),
+          ...(previous.empire?.executives ?? []).filter(person => person.hired).map(person => ({
+            id: `legacy_${person.role}`, name: person.name, kind: 'manager' as const, tier: 'regional' as const,
+            rating: 65, hireCost: person.cost, executiveRole: person.role,
+          })),
+        ];
+        const managedSchedule = staffDailySchedule(migratedStaff);
         return ({
         ...current,
         ...previous,
         roster: (previous.roster ?? current.roster).map(player => {
           const { avatar: _avatar, ...rest } = player as ProPlayer & { avatar?: string };
-          return { ...rest, portraitIndex: getPortraitIndex(player.id, player.portraitIndex) };
+          return { ...rest, portraitIndex: getPortraitIndex(player.id, player.portraitIndex),
+            dailySchedule: managedSchedule };
         }),
+        facilities: { ...INITIAL_FACILITIES, ...(previous.facilities ?? {}) },
+        roomFunding: previous.roomFunding ?? {},
         teamLineups: previous.teamLineups ?? {},
         developmentPoints: previous.developmentPoints ?? 0,
         powerRankings: previous.powerRankings ?? current.powerRankings ?? INITIAL_POWER_RANKINGS,
         coaches: previous.coaches ?? current.coaches ?? INITIAL_COACHES,
+        staffMarketSeed: previous.staffMarketSeed ?? INITIAL_STAFF_SEED,
+        staffMarket: previous.staffMarket ?? generateStaffMarket(previous.staffMarketSeed ?? INITIAL_STAFF_SEED),
+        hiredStaff: migratedStaff,
         timeOfDay: previous.timeOfDay ?? current.timeOfDay ?? 'day',
-        houseInterior: previous.houseInterior ?? current.houseInterior ?? INITIAL_HOUSE_INTERIOR,
+        houseInterior: { ...INITIAL_HOUSE_INTERIOR, ...(current.houseInterior ?? {}), ...(previous.houseInterior ?? {}) },
         empire: {
           ...INITIAL_EMPIRE,
           ...(current.empire ?? INITIAL_EMPIRE),
           ...(previous.empire ?? {}),
+          basketballTier: previous.empire?.basketballTier ?? 1,
+          footballTier: previous.empire?.footballTier ?? 1,
           branding: { ...INITIAL_EMPIRE.branding, ...(previous.empire?.branding ?? {}) },
-          schedule: previous.empire?.schedule ?? INITIAL_EMPIRE.schedule,
+          schedule: managedSchedule,
           executives: previous.empire?.executives ?? INITIAL_EMPIRE.executives,
           seasonCalendar: {
             ...INITIAL_EMPIRE.seasonCalendar,
             ...(previous.empire?.seasonCalendar ?? {}),
             stageWins: { ...INITIAL_EMPIRE.seasonCalendar.stageWins, ...(previous.empire?.seasonCalendar?.stageWins ?? {}) },
           },
-          vipInventory: previous.empire?.vipInventory ?? [],
+          vipInventory: Array.from(new Set([
+            ...(previous.empire?.vipInventory ?? []),
+            ...(previous.houseInterior?.wallpaperStyle && previous.houseInterior.wallpaperStyle !== 'default'
+              ? [`wall_${previous.houseInterior.wallpaperStyle}` as VipItemId] : []),
+          ])),
+          branches: previous.empire?.branches ?? [],
         },
         isTournamentUnderway: false,
         activeTournamentMatch: null,

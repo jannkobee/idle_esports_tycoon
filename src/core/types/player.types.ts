@@ -62,6 +62,9 @@ export interface ProPlayer {
   /** Optional so existing v1 saves hydrate without migration. */
   personality?: PlayerPersonality;
   inspiredUntil?: number;
+  /** Staff-designed plan; the player may choose another available activity. */
+  dailySchedule?: ('scrim' | 'vod' | 'gym' | 'outdoor' | 'rest')[];
+  sportsPreference?: 'basketball' | 'football' | 'none';
 }
 
 export interface Coach {

@@ -10,10 +10,11 @@ import {
   calculateRoomMultiplier,
 } from './activities';
 import { FRONT_DOOR_SPAWN, HOUSE_STATIONS } from './houseGeometry';
-import { getNavGrid, NavContext } from './navigation';
+import { findAStarPath, getNavGrid, NavContext } from './navigation';
 import { createRng } from './rng';
 import {
   createHouseSim,
+  findBestStation,
   getOccupiedStationIds,
   pickNextActivity,
   stepHouseSim,
@@ -92,6 +93,20 @@ const TEST_FACILITIES: Record<FacilityId, Facility> = {
     unlockCost: 50000,
     requiredHype: 2000,
   },
+  cafeteria: {
+    id: 'cafeteria',
+    name: 'Pro Dining & Nutrition Bar',
+    category: 'wellness',
+    description: 'Chef-prepared meals',
+    level: 1,
+    baseCost: 8000,
+    costMultiplier: 1.18,
+    baseIncomePerSec: 350,
+    icon: 'Coffee',
+    isUnlocked: false,
+    unlockCost: 15000,
+    requiredHype: 600,
+  },
 };
 
 function createTestRoster(count = 6): ProPlayer[] {
@@ -153,6 +168,36 @@ describe('House Simulation Engine', () => {
   });
 
   describe('Activity Transitions', () => {
+    it('treats staff blocks as weighted guidance and offers optional sports', () => {
+      const player: ProPlayer = { ...roster[0], dailySchedule: ['vod', 'scrim', 'gym', 'outdoor', 'rest'],
+        sportsPreference: 'basketball' };
+      const sim = createHouseSim([player], TEST_FACILITIES, 42);
+      const agent = { ...sim.agents[0], energy: 90, workStreak: 0, activity: 'practice' as const };
+      const unlocked = new Set<FacilityId>(['scrim_lab', 'analyst_room']);
+      let reviewCount = 0, practiceCount = 0;
+      for (let seed = 0; seed < 200; seed++) {
+        const activity = pickNextActivity(agent, unlocked, createRng(seed), player, 0);
+        if (activity === 'review') reviewCount++;
+        if (activity === 'practice') practiceCount++;
+      }
+      expect(reviewCount).toBeGreaterThan(practiceCount);
+      expect(practiceCount).toBeGreaterThan(0);
+      expect(findBestStation(agent, 'break', [], unlocked, sim.facilityLevels, 'basketball')?.id).toBe('patio_basketball_hoop');
+      expect(findBestStation(agent, 'break', [], unlocked, sim.facilityLevels, 'football')?.id).toBe('outside_football_drills');
+      expect(['patio_basketball_hoop', 'outside_football_drills']).not.toContain(findBestStation(agent, 'break', [], unlocked, sim.facilityLevels)?.id);
+      expect(getNavGrid({ unlockedFacilities: unlocked, facilityLevels: sim.facilityLevels }).isPointWalkable(8.1, 14.6)).toBe(true);
+      const outdoorGrid = getNavGrid({ unlockedFacilities: unlocked, facilityLevels: sim.facilityLevels });
+      for (const stationId of ['patio_basketball_hoop', 'outside_football_drills']) {
+        const station = HOUSE_STATIONS.find(candidate => candidate.id === stationId)!;
+        const path = findAStarPath(outdoorGrid, FRONT_DOOR_SPAWN, station.approach);
+        expect(path.length).toBeGreaterThan(2);
+        expect(path.at(-1)?.x).toBeCloseTo(station.approach.x, 0);
+      }
+      expect(getNavGrid({ unlockedFacilities: unlocked, facilityLevels: sim.facilityLevels }).isPointWalkable(-2.7, 12.1)).toBe(false);
+      const withCafe = new Set<FacilityId>([...unlocked, 'cafeteria']);
+      expect(findBestStation(agent, 'break', [], withCafe, { ...sim.facilityLevels, cafeteria: 1 })?.id).toBeDefined();
+      expect(getNavGrid({ unlockedFacilities: withCafe, facilityLevels: { ...sim.facilityLevels, cafeteria: 1 } }).isPointWalkable(-2.7, 12.1)).toBe(true);
+    });
     it('forces a break when energy drops below 40 or workStreak >= 2', () => {
       const rng = createRng(42);
       const agent = {
@@ -229,7 +274,7 @@ describe('House Simulation Engine', () => {
     it('prevents navigation through or into locked rooms', () => {
       const context: NavContext = {
         unlockedFacilities: new Set<FacilityId>(['scrim_lab']),
-        facilityLevels: { scrim_lab: 1, streaming_pod: 0, gym: 0, analyst_room: 0, merch_store: 0 },
+        facilityLevels: { scrim_lab: 1, streaming_pod: 0, gym: 0, analyst_room: 0, merch_store: 0, cafeteria: 0 },
       };
       const grid = getNavGrid(context);
 
@@ -246,7 +291,7 @@ describe('House Simulation Engine', () => {
     it('recovers stuck agents placed in obstacles or newly locked rooms', () => {
       const context: NavContext = {
         unlockedFacilities: new Set<FacilityId>(['scrim_lab']),
-        facilityLevels: { scrim_lab: 1, streaming_pod: 0, gym: 0, analyst_room: 0, merch_store: 0 },
+        facilityLevels: { scrim_lab: 1, streaming_pod: 0, gym: 0, analyst_room: 0, merch_store: 0, cafeteria: 0 },
       };
       const grid = getNavGrid(context);
 
@@ -473,7 +518,7 @@ describe('House Simulation Engine', () => {
         const station = HOUSE_STATIONS.find(s => s.id === id);
         expect(station).toBeDefined();
         expect(station?.area).toBe('hall');
-        expect(station?.seat.y).toBeGreaterThan(14.0);
+        expect((station?.seat.y ?? 0) > 14.0 || (station?.seat.y ?? 0) < 0).toBe(true);
       }
     });
 

@@ -6,7 +6,8 @@ import { formatCash } from '../../utils/formatCurrency';
 import confetti from 'canvas-confetti';
 import { PlayerCard } from './PlayerCard';
 import { LineupManager } from './LineupManager';
-import { CARD_ODDS, CARD_PACK_COST, developmentCost, duplicateKey, duplicateValue, getCardAttributes, getOverall, getPotential, resolveLineup, trainingCeiling } from '../../core/cards/CardService';
+import { CARD_ODDS, CARD_PACK_COST, developmentCost, duplicateKey, duplicateValue, getCardAttributes, getOverall, getPotential, trainingCeiling } from '../../core/cards/CardService';
+import { coachSelectLineup, managerDiscount } from '../../core/staff/StaffService';
 
 const ICON_MAP = {
   Crosshair,
@@ -25,13 +26,13 @@ const RARITY_COLORS: Record<string, { border: string; bg: string; text: string; 
 };
 
 export const RosterPanel: React.FC = () => {
-  const { roster, teamLineups, cash, developmentPoints, convertDuplicateCard, developPlayer, scoutPlayer, buyCardPack, trainPlayer, trainCardAttribute, requestAd, empire } = useGameStore();
+  const { roster, hiredStaff, cash, developmentPoints, convertDuplicateCard, developPlayer, scoutPlayer, buyCardPack, trainPlayer, trainCardAttribute, requestAd, empire } = useGameStore();
   const [selectedDiscipline, setSelectedDiscipline] = useState<EsportsDiscipline | 'all'>('all');
   const [scoutedPlayerNotice, setScoutedPlayerNotice] = useState<ProPlayer | null>(null);
   const [revealingCard, setRevealingCard] = useState<ProPlayer | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [progressNotice, setProgressNotice] = useState('');
-  const packCost = Math.round(CARD_PACK_COST * (empire.executives.some(staff => staff.role === 'gm' && staff.hired) ? 0.8 : 1));
+  const packCost = Math.round(CARD_PACK_COST * (1 - Math.max(empire.executives.some(staff => staff.role === 'gm' && staff.hired) ? 0.2 : 0, managerDiscount(hiredStaff, 'gm'))));
 
   useEffect(() => {
     if (!revealingCard || revealed) return;
@@ -189,7 +190,7 @@ export const RosterPanel: React.FC = () => {
         {filteredRoster.map(player => {
           const rarityStyle = RARITY_COLORS[player.rarity] || RARITY_COLORS.bronze;
           const disciplineInfo = DISCIPLINE_INFO[player.discipline];
-          const onLineup = Object.values(resolveLineup(roster, player.discipline, teamLineups[player.discipline])).includes(player.id);
+          const onLineup = Object.values(coachSelectLineup(roster, player.discipline, hiredStaff)).includes(player.id);
           const duplicateCount = roster.filter(candidate => duplicateKey(candidate) === duplicateKey(player)).length;
 
           return (

@@ -136,6 +136,7 @@ export function generateCard(discipline: EsportsDiscipline, rosterSize: number, 
     fans: Math.round(base * (rarity === 'goat' ? 500 : 20)), isClutch: rarity === 'goat' || clutch > 83,
     contractMatchesRemaining: 20, sleepQuality: 90, mood: 90, energy: 100,
     personality: scaling ? 'scaling' : age <= 21 && potential >= 85 ? 'grinder' : 'tactician',
+    sportsPreference: random() < 0.42 ? 'basketball' : random() < 0.72 ? 'football' : 'none',
   };
 }
 

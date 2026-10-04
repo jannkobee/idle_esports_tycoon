@@ -566,6 +566,18 @@ export const HOUSE_STATIONS: HouseStation[] = [
 
   // --- Outdoor Living Simulation & Patio Break Stations ---
   {
+    id: 'cafeteria_meal_table',
+    activity: 'break',
+    area: 'cafeteria',
+    seat: { x: -3.0, y: 11.6 },
+    approach: { x: -2.7, y: 12.1 },
+    facing: 'nw',
+    pose: 'sit',
+    minLevel: 1,
+    prop: 'snack',
+    label: 'Team Cafeteria Meal',
+  },
+  {
     id: "patio_watch_tv",
     activity: "break",
     area: "hall",
@@ -591,12 +603,23 @@ export const HOUSE_STATIONS: HouseStation[] = [
     id: "patio_basketball_hoop",
     activity: "break",
     area: "hall",
-    seat: { x: 10.5, y: 15.0 },
-    approach: { x: 10.0, y: 14.6 },
+    seat: { x: -2.5, y: -13.0 },
+    approach: { x: -2.5, y: -11.7 },
     facing: "ne",
-    pose: "stand",
+    pose: "hoops",
     minLevel: 1,
     label: "Driveway Basketball Hoop",
+  },
+  {
+    id: 'outside_football_drills',
+    activity: 'break',
+    area: 'hall',
+    seat: { x: 14.5, y: -13.0 },
+    approach: { x: 14.5, y: -11.7 },
+    facing: 'se',
+    pose: 'run',
+    minLevel: 1,
+    label: 'Football Agility Drills',
   },
   {
     id: "outside_garden_bench",
@@ -620,6 +643,18 @@ export const HOUSE_STATIONS: HouseStation[] = [
     minLevel: 1,
     label: "Team Sports Car",
   },
+  {
+    id: 'dynasty_mart_inside', activity: 'break', area: 'hall',
+    seat: { x: -8.2, y: 31.25 }, approach: { x: -8.2, y: 30.4 },
+    facing: 'sw', pose: 'stand', minLevel: 1, minDistrictTier: 1,
+    prop: 'snack', label: 'Inside Dynasty Mart',
+  },
+  {
+    id: 'boba_cafe_inside', activity: 'break', area: 'hall',
+    seat: { x: 3.2, y: 31.25 }, approach: { x: 3.2, y: 30.35 },
+    facing: 'nw', pose: 'stand', minLevel: 1, minDistrictTier: 2,
+    prop: 'cup', label: 'Inside GG Boba Cafe',
+  },
 ];
 
 export function getStationById(stationId: string): HouseStation | undefined {
@@ -632,7 +667,9 @@ export function isStationAvailable(
     | Set<FacilityId>
     | Record<FacilityId, { isUnlocked: boolean; level: number }>,
   facilityLevels?: Record<FacilityId, number>,
+  districtTier = 1,
 ): boolean {
+  if ((station.minDistrictTier ?? 1) > districtTier) return false;
   if (station.area !== "hall") {
     const isUnlocked =
       unlockedFacilities instanceof Set

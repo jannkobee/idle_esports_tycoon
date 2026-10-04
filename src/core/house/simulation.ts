@@ -23,6 +23,7 @@ import {
 } from "./houseGeometry";
 import { createStationRoute, NavContext } from "./navigation";
 import { createRng, hashString, Rng } from "./rng";
+import { playerSportsPreference } from '../empire/EmpireService';
 
 export interface SimAgent {
   id: string;
@@ -46,6 +47,7 @@ export interface SimAgent {
   timer: number;
   energizedTimer: number;
   waitTimer: number;
+  sportsPreference?: ProPlayer['sportsPreference'];
   speechBubble?: {
     text: string;
     expiresAt: number;
@@ -58,6 +60,7 @@ export interface HouseSimState {
   facilityLevels: Record<FacilityId, number>;
   pendingGains: ActivityGains;
   simTime: number;
+  districtTier: number;
   rng: Rng;
 }
 
@@ -112,6 +115,9 @@ export function findBestStation(
   allAgents: SimAgent[],
   unlockedFacilities: Set<FacilityId>,
   facilityLevels: Record<FacilityId, number>,
+  preferredSport?: ProPlayer['sportsPreference'],
+  districtTier = 1,
+  preferShop = false,
 ): HouseStation | null {
   const occupied = getOccupiedStationIds(allAgents);
   // Exclude current station so agent can re-pick it if valid
@@ -119,11 +125,24 @@ export function findBestStation(
 
   const candidates = HOUSE_STATIONS.filter((s) => {
     if (s.activity !== activity) return false;
+    if (s.id === 'patio_basketball_hoop' && preferredSport !== 'basketball') return false;
+    if (s.id === 'outside_football_drills' && preferredSport !== 'football') return false;
     if (occupied.has(s.id)) return false;
-    return isStationAvailable(s, unlockedFacilities, facilityLevels);
+    return isStationAvailable(s, unlockedFacilities, facilityLevels, districtTier);
   });
 
   if (!candidates.length) return null;
+
+  if (activity === 'break' && preferShop) {
+    const shops = candidates.filter(station => station.id === 'dynasty_mart_inside' || station.id === 'boba_cafe_inside');
+    if (shops.length) return shops[Math.abs(agent.seed) % shops.length];
+  }
+
+  if (activity === 'break' && preferredSport) {
+    const stationId = preferredSport === 'basketball' ? 'patio_basketball_hoop' : preferredSport === 'football' ? 'outside_football_drills' : '';
+    const sportStation = candidates.find(station => station.id === stationId);
+    if (sportStation) return sportStation;
+  }
 
   // 1. If break activity and partner is chatting:
   if (activity === "break") {
@@ -166,6 +185,8 @@ export function pickNextActivity(
   agent: SimAgent,
   unlockedFacilities: Set<FacilityId>,
   rng: Rng,
+  player?: ProPlayer,
+  blockIndex = 0,
 ): ActivityId {
   // Forced break conditions: energy < 40 or 2 consecutive work blocks
   if (agent.energy < 40 || agent.workStreak >= 2) {
@@ -181,9 +202,8 @@ export function pickNextActivity(
   }
 
   // Build candidate work activities
-  const candidateWeights: { activity: ActivityId; weight: number }[] = [
-    { activity: "practice", weight: 1.0 },
-  ];
+  const candidateWeights: { activity: ActivityId; weight: number }[] = [];
+  if (unlockedFacilities.has('scrim_lab')) candidateWeights.push({ activity: 'practice', weight: 1 });
 
   if (unlockedFacilities.has("streaming_pod")) {
     candidateWeights.push({ activity: "stream", weight: 1.0 });
@@ -194,6 +214,13 @@ export function pickNextActivity(
   if (unlockedFacilities.has("gym")) {
     candidateWeights.push({ activity: "exercise", weight: 1.0 });
   }
+  const schedule = player?.dailySchedule;
+  const block = schedule?.[blockIndex % schedule.length];
+  const priority: ActivityId | undefined = block === 'scrim' ? 'practice' : block === 'vod' ? 'review' : block === 'gym' ? 'exercise' : block === 'outdoor' || block === 'rest' ? 'break' : undefined;
+  if (priority === 'break' && rng.next() < (block === 'rest' ? 0.7 : 0.45)) return 'break';
+  const scheduled = candidateWeights.find(candidate => candidate.activity === priority);
+  if (scheduled) scheduled.weight *= 2.2;
+  if (candidateWeights.length === 0) return 'break';
 
   // "After a break, the previous activity is weighted x2.5 (the 'return' step)"
   if (agent.activity === "break" && agent.lastWork) {
@@ -211,7 +238,7 @@ export function pickNextActivity(
     roll -= cw.weight;
   }
 
-  return "practice";
+  return candidateWeights[0].activity;
 }
 
 export function assignAgentActivity(
@@ -227,6 +254,9 @@ export function assignAgentActivity(
     allAgents,
     context.unlockedFacilities,
     context.facilityLevels,
+    activity === 'break' && rng.next() < 0.45 ? agent.sportsPreference : undefined,
+    context.districtTier ?? 1,
+    activity === 'break' && rng.next() < 0.35,
   );
 
   if (!station) {
@@ -273,6 +303,7 @@ export function createHouseSim(
   roster: ProPlayer[],
   facilities: Record<FacilityId, { isUnlocked: boolean; level: number }>,
   seed = 42,
+  districtTier = 1,
 ): HouseSimState {
   const rng = createRng(seed);
   const unlocked = new Set<FacilityId>(
@@ -345,6 +376,7 @@ export function createHouseSim(
       timer: 20 + agentRng.next() * 35, // staggered timer
       energizedTimer: 0,
       waitTimer: 0,
+      sportsPreference: playerSportsPreference(player),
     });
   });
 
@@ -354,6 +386,7 @@ export function createHouseSim(
     facilityLevels: levels,
     pendingGains: { hype: 0, stats: {} },
     simTime: 0,
+    districtTier,
     rng,
   };
 }
@@ -362,7 +395,9 @@ export function syncHouseSim(
   sim: HouseSimState,
   roster: ProPlayer[],
   facilities: Record<FacilityId, { isUnlocked: boolean; level: number }>,
+  districtTier = 1,
 ): void {
+  sim.districtTier = districtTier;
   sim.unlockedFacilities = new Set<FacilityId>(
     (Object.keys(facilities) as FacilityId[]).filter(
       (id) => facilities[id].isUnlocked,
@@ -375,6 +410,7 @@ export function syncHouseSim(
   const context: NavContext = {
     unlockedFacilities: sim.unlockedFacilities,
     facilityLevels: sim.facilityLevels,
+    districtTier,
   };
 
   const activePlayers = roster
@@ -397,13 +433,14 @@ export function syncHouseSim(
     agent.handle = player.handle;
     agent.name = player.name;
     agent.portraitIndex = player.portraitIndex;
+    agent.sportsPreference = playerSportsPreference(player);
 
     // Check station validity
     if (agent.stationId) {
       const station = getStationById(agent.stationId);
       if (
         !station ||
-        !isStationAvailable(station, sim.unlockedFacilities, sim.facilityLevels)
+        !isStationAvailable(station, sim.unlockedFacilities, sim.facilityLevels, districtTier)
       ) {
         // Evacuate from locked station
         agent.stationId = null;
@@ -441,6 +478,7 @@ export function syncHouseSim(
         timer: 1.0,
         energizedTimer: 0,
         waitTimer: 0,
+        sportsPreference: playerSportsPreference(player),
       };
 
       // Assign activity and walk in
@@ -459,6 +497,7 @@ export function stepHouseSim(
   const context: NavContext = {
     unlockedFacilities: sim.unlockedFacilities,
     facilityLevels: sim.facilityLevels,
+    districtTier: sim.districtTier,
   };
   const rosterMap = new Map(roster.map((p) => [p.id, p]));
 
@@ -495,6 +534,8 @@ export function stepHouseSim(
             agent,
             sim.unlockedFacilities,
             sim.rng,
+            rosterMap.get(agent.id),
+            Math.floor(sim.simTime / 120),
           );
           assignAgentActivity(agent, nextAct, sim.agents, context, sim.rng);
         }
@@ -566,6 +607,11 @@ export function stepHouseSim(
             agent.pose = station.pose;
             agent.mode = "working";
             agent.timer = pickActivityDuration(agent.activity, sim.rng);
+
+            if (station.id === 'dynasty_mart_inside' || station.id === 'boba_cafe_inside') {
+              agent.energizedTimer = Math.max(agent.energizedTimer, 180);
+              agent.speechBubble = { text: station.id === 'boba_cafe_inside' ? 'Boba run!' : 'Snack break!', expiresAt: sim.simTime + 4 };
+            }
 
             if (agent.activity !== "break") {
               agent.workStreak += 1;
@@ -661,6 +707,14 @@ export function stepHouseSim(
           const tiltDelta = (0.2 / 60) * tiltCap * dt;
           playerGains.tiltResistance =
             (playerGains.tiltResistance || 0) + tiltDelta;
+        } else if (agent.stationId === 'outside_football_drills') {
+          const tiltCap = calculateCapMultiplier(player.stats.tiltResistance, player.rarity, player.potential);
+          playerGains.tiltResistance = (playerGains.tiltResistance || 0) + (0.22 / 60) * tiltCap * dt;
+          const commsCap = calculateCapMultiplier(player.stats.comms, player.rarity, player.potential);
+          playerGains.comms = (playerGains.comms || 0) + (0.08 / 60) * commsCap * dt;
+        } else if (agent.stationId === 'dynasty_mart_inside' || agent.stationId === 'boba_cafe_inside') {
+          const tiltCap = calculateCapMultiplier(player.stats.tiltResistance, player.rarity, player.potential);
+          playerGains.tiltResistance = (playerGains.tiltResistance || 0) + (0.18 / 60) * tiltCap * dt;
         }
       } else {
         // Energy drain
@@ -760,6 +814,8 @@ export function stepHouseSim(
           agent,
           sim.unlockedFacilities,
           sim.rng,
+          player,
+          Math.floor(sim.simTime / 120),
         );
         assignAgentActivity(agent, nextAct, sim.agents, context, sim.rng);
       }

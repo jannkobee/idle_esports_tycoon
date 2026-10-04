@@ -66,12 +66,15 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
 }) => {
   const {
     facilities,
+    roomFunding,
     roster,
     cash,
     hype,
     boostExpiresAt,
     upgradeFacility,
     unlockFacility,
+    fundFacilityWithAd,
+    requestAd,
     empire,
     houseInterior,
     setWallpaperStyle,
@@ -98,9 +101,9 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
 
   const cost = facility.isUnlocked
     ? FormulaService.calculateUpgradeCost(facility.baseCost, facility.level, facility.costMultiplier)
-    : facility.unlockCost;
+    : Math.max(0, facility.unlockCost - (roomFunding[roomId] ?? 0));
 
-  const affordable = cash >= cost && (facility.isUnlocked || hype >= facility.requiredHype);
+  const affordable = cash >= cost && (facility.isUnlocked || hype >= facility.requiredHype || cost === 0);
 
   const income =
     FormulaService.calculateFacilityIncome(facility) *
@@ -172,7 +175,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
             </span>
           </div>
           <div className="text-[9px] font-medium text-slate-400">
-            {unlockedRoomsCount}/5 Rooms Open · {activeRoster.length} Pros Active
+            {unlockedRoomsCount}/{Object.keys(facilities).length} Rooms Open · {activeRoster.length} Pros Active
           </div>
         </div>
 
@@ -432,10 +435,11 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {WALLPAPERS.map((wp) => {
                   const isActive = houseInterior.wallpaperStyle === wp.id;
+                  const isOwned = wp.id === 'default' || empire.vipInventory.includes(`wall_${wp.id}` as const);
                   return (
                     <button
                       key={wp.id}
-                      onClick={() => setWallpaperStyle(wp.id)}
+                      onClick={() => isOwned ? setWallpaperStyle(wp.id) : onOpenEmpire()}
                       className={`p-2 rounded-xl border text-left flex flex-col gap-0.5 transition-all active:scale-95 ${
                         isActive
                           ? 'bg-slate-800/90 border-cyan-400 ring-1 ring-cyan-400/50'
@@ -446,7 +450,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
                         <span className="text-[10px] font-black text-white">{wp.label}</span>
                         {isActive && <Check size={11} className="text-cyan-400" />}
                       </div>
-                      <span className="text-[8px] text-slate-400 leading-tight">{wp.desc}</span>
+                      <span className="text-[8px] text-slate-400 leading-tight">{isOwned ? wp.desc : 'Locked · open Cosmetic Store'}</span>
                     </button>
                   );
                 })}
@@ -542,7 +546,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
             </div>
 
             {/* Upgrade & Unlock Action Row */}
-            <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-800/80">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
               <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
                 {!facility.isUnlocked ? (
                   <span className="flex items-center gap-1 text-amber-400 font-bold">
@@ -555,6 +559,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
                 )}
               </div>
 
+              {!facility.isUnlocked && <button onClick={() => requestAd('room_funding', completed => { if (completed) fundFacilityWithAd(roomId); })} className="rounded-xl border border-amber-500/50 bg-amber-500/15 px-2 py-2 text-[10px] font-black text-amber-200">Watch Ad · Fund {Math.min(100, Math.floor((roomFunding[roomId] ?? 0) / facility.unlockCost * 100))}%</button>}
               <button
                 onClick={handleUpgradeOrUnlock}
                 disabled={!affordable}

@@ -58,8 +58,8 @@ export class FormulaService {
       return sum + this.calculateFacilityIncome(fac);
     }, 0);
 
-    // Baseline minimum income if at least 1 facility unlocked
-    const baseIncome = Math.max(rawFacilityIncome, facilities.some(f => f.isUnlocked) ? 1 : 0);
+    // Small community/sponsor income keeps the game playable before the first room is unlocked.
+    const baseIncome = Math.max(rawFacilityIncome, 1);
 
     // Hype multiplier: Every 50 Hype provides +5% global boost
     const hypeMultiplier = 1 + (Math.max(0, hype) * 0.001);

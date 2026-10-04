@@ -3,7 +3,8 @@ export type FacilityId =
   | 'streaming_pod'
   | 'gym'
   | 'analyst_room'
-  | 'merch_store';
+  | 'merch_store'
+  | 'cafeteria';
 
 export interface Facility {
   id: FacilityId;

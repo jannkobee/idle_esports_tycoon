@@ -11,6 +11,7 @@ import {
 export interface NavContext {
   unlockedFacilities: Set<FacilityId>;
   facilityLevels: Record<FacilityId, number>;
+  districtTier?: number;
 }
 
 const GRID_STEP = 0.25;
@@ -18,10 +19,10 @@ const INFLATE = 0.15;
 const LOS_STEP = 0.05;
 
 // Grid limits: house tile coordinates range from 0 to 14.5
-const X_MIN = 0.0;
-const X_MAX = 14.5;
-const Y_MIN = 0.0;
-const Y_MAX = 14.5;
+const X_MIN = -12.5;
+const X_MAX = 22.5;
+const Y_MIN = -19.0;
+const Y_MAX = 35.5;
 
 const COLS = Math.ceil((X_MAX - X_MIN) / GRID_STEP) + 1;
 const ROWS = Math.ceil((Y_MAX - Y_MIN) / GRID_STEP) + 1;
@@ -56,9 +57,11 @@ export class NavGrid {
   private readonly walkable: Uint8Array;
   private readonly activeObstacles: Rect[];
   private readonly lockedRoomRects: Rect[];
+  private readonly cafeteriaOpen: boolean;
 
   constructor(context: NavContext) {
     const { unlockedFacilities, facilityLevels } = context;
+    this.cafeteriaOpen = unlockedFacilities.has('cafeteria');
     const sortedRooms = Array.from(unlockedFacilities).sort().join(',');
     const sortedLevels = Object.entries(facilityLevels)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -123,7 +126,18 @@ export class NavGrid {
     // Or H2 entrance down to y = 14.2: x in [6.4, 7.4], y in [13.6, 14.15]
     const inRegularBounds = px >= 0.4 && px <= 13.6 && py >= 0.4 && py <= 13.6;
     const inEntrance = px >= 6.4 && px <= 7.4 && py > 13.6 && py <= 14.15;
-    if (!inRegularBounds && !inEntrance) return false;
+    const inOutdoorWalk = (px >= -8 && px <= 22 && py >= 13.6 && py <= 16.0)
+      || (px >= -8 && px <= 0.4 && py >= -18.5 && py <= 16)
+      || (px >= 13.6 && px <= 22 && py >= -18.5 && py <= 16)
+      || (px >= -8 && px <= 22 && py >= -18.5 && py <= 0.4);
+    // Pedestrians use the marked crosswalk, then the opposite sidewalk and
+    // open-front shop interiors. The traffic lanes remain non-walkable.
+    const inCrosswalk = px >= -3.25 && px <= -0.75 && py >= 16 && py <= 27.6;
+    const inShopSidewalk = px >= -12.0 && px <= 20 && py >= 26.5 && py <= 29.9;
+    const inMart = px >= -11.7 && px <= -4.3 && py >= 29.5 && py <= 33.7;
+    const inCafe = px >= -0.15 && px <= 6.55 && py >= 29.5 && py <= 33.7;
+    const inCafeteria = px >= -5.4 && px <= -0.2 && py >= 7.5 && py <= 13.6 && this.cafeteriaOpen;
+    if (!inRegularBounds && !inEntrance && !inOutdoorWalk && !inCafeteria && !inCrosswalk && !inShopSidewalk && !inMart && !inCafe) return false;
 
     // Check locked rooms
     for (const lr of this.lockedRoomRects) {

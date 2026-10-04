@@ -368,6 +368,544 @@ const AnimatedNpcFan: React.FC<AnimatedNpcProps> = ({
 };
 
 // ============================================================================
+
+// ============================================================================
+// 1.5 BACKYARD SPORTS COMPLEX (UPGRADEABLE BASKETBALL & FOOTBALL)
+// ============================================================================
+
+interface SportsFacilityProps {
+  tier: 1 | 2 | 3;
+  primaryColor: string;
+  accentColor: string;
+  ballRef?: React.RefObject<any>;
+}
+
+const BackyardBasketballCourt: React.FC<SportsFacilityProps> = ({
+  tier,
+  primaryColor,
+  ballRef,
+}) => {
+  return (
+    <group position={[-2.5, 0, -13]}>
+      {/* Court Foundation Pad (10.5m x 8.5m) */}
+      <mesh position={[0, -0.47, 0]} receiveShadow>
+        <boxGeometry args={[10.5, 0.08, 8.5]} />
+        <meshStandardMaterial
+          color={tier === 1 ? '#1e293b' : tier === 2 ? '#0f172a' : '#090d16'}
+          roughness={tier === 3 ? 0.35 : 0.65}
+          metalness={tier === 3 ? 0.2 : 0.05}
+        />
+      </mesh>
+
+      {/* Tier 2 & 3: Colored Inner Paint Key & 3-Point Zone */}
+      {tier >= 2 && (
+        <mesh position={[0, -0.468, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[9.8, 7.8]} />
+          <meshStandardMaterial color={tier === 3 ? '#1e3a8a' : '#0284c7'} roughness={0.4} />
+        </mesh>
+      )}
+
+      {/* Painted Court Boundary Line */}
+      <mesh position={[0, -0.465, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[10.1, 8.1]} />
+        <meshBasicMaterial color="#ffffff" wireframe />
+      </mesh>
+
+      {/* Center Half-Court Line */}
+      <mesh position={[0, -0.464, 0]}>
+        <boxGeometry args={[0.08, 0.002, 8.0]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Center Court Circle */}
+      <mesh position={[0, -0.463, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.3, 1.38, 32]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Tier 3: Team Crest in Center Court */}
+      {tier === 3 && (
+        <group position={[0, -0.462, 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[1.2, 32]} />
+            <meshStandardMaterial color={primaryColor} roughness={0.3} />
+          </mesh>
+          <Html position={[0, 0.1, 0]} center transform rotation={[-Math.PI / 2, 0, 0]} scale={0.28}>
+            <div className="font-black text-slate-950 uppercase tracking-widest text-[16px] select-none pointer-events-none drop-shadow">
+              DYNASTY
+            </div>
+          </Html>
+        </group>
+      )}
+
+      {/* West Main Hoop Assembly */}
+      <group position={[-4.8, -0.4, 0]}>
+        <mesh position={[0, 1.8, 0]} castShadow>
+          <boxGeometry args={[0.16, 3.6, 0.16]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
+        </mesh>
+        <mesh position={[0.45, 3.2, 0]} rotation={[0, 0, -Math.PI / 6]} castShadow>
+          <boxGeometry args={[1.1, 0.12, 0.12]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
+        </mesh>
+
+        <group position={[0.95, 3.2, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.05, 1.15, 1.8]} />
+            {tier === 1 ? (
+              <meshStandardMaterial color="#f8fafc" roughness={0.5} />
+            ) : (
+              <meshPhysicalMaterial
+                color="#e0f2fe"
+                transparent
+                opacity={0.65}
+                roughness={0.1}
+                metalness={0.1}
+                transmission={0.8}
+              />
+            )}
+          </mesh>
+          <mesh position={[0.026, -0.15, 0]}>
+            <boxGeometry args={[0.01, 0.45, 0.6]} />
+            <meshBasicMaterial color={tier >= 2 ? '#ef4444' : '#0284c7'} wireframe />
+          </mesh>
+          <mesh position={[0.3, -0.32, 0]}>
+            <torusGeometry args={[0.26, 0.024, 12, 24]} />
+            <meshStandardMaterial color="#f97316" metalness={0.6} roughness={0.3} />
+          </mesh>
+          <mesh position={[0.3, -0.55, 0]}>
+            <cylinderGeometry args={[0.25, 0.14, 0.42, 12, 1, true]} />
+            <meshStandardMaterial color="#f8fafc" wireframe transparent opacity={0.7} />
+          </mesh>
+
+          {tier === 3 && (
+            <group position={[0, 0.78, 0]}>
+              <mesh>
+                <boxGeometry args={[0.12, 0.32, 0.55]} />
+                <meshStandardMaterial color="#020617" roughness={0.3} />
+              </mesh>
+              <Html position={[0.07, 0, 0]} center transform rotation={[0, Math.PI / 2, 0]} scale={0.12}>
+                <div className="bg-black/95 px-1 py-0.5 rounded border border-red-600 text-red-500 font-mono font-black text-[14px] tracking-widest">
+                  24
+                </div>
+              </Html>
+            </group>
+          )}
+        </group>
+
+        {tier === 3 && (
+          <mesh position={[0, 0.8, 0]} castShadow>
+            <boxGeometry args={[0.42, 1.6, 0.42]} />
+            <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
+          </mesh>
+        )}
+      </group>
+
+      {/* Tier 3: East Opposite Hoop (Full Court) */}
+      {tier === 3 && (
+        <group position={[4.8, -0.4, 0]} rotation={[0, Math.PI, 0]}>
+          <mesh position={[0, 1.8, 0]} castShadow>
+            <boxGeometry args={[0.16, 3.6, 0.16]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
+          </mesh>
+          <mesh position={[0.45, 3.2, 0]} rotation={[0, 0, -Math.PI / 6]} castShadow>
+            <boxGeometry args={[1.1, 0.12, 0.12]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
+          </mesh>
+          <group position={[0.95, 3.2, 0]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.05, 1.15, 1.8]} />
+              <meshPhysicalMaterial
+                color="#e0f2fe"
+                transparent
+                opacity={0.65}
+                roughness={0.1}
+                transmission={0.8}
+              />
+            </mesh>
+            <mesh position={[0.3, -0.32, 0]}>
+              <torusGeometry args={[0.26, 0.024, 12, 24]} />
+              <meshStandardMaterial color="#f97316" metalness={0.6} />
+            </mesh>
+            <mesh position={[0.3, -0.55, 0]}>
+              <cylinderGeometry args={[0.25, 0.14, 0.42, 12, 1, true]} />
+              <meshStandardMaterial color="#f8fafc" wireframe transparent opacity={0.7} />
+            </mesh>
+            <group position={[0, 0.78, 0]}>
+              <mesh>
+                <boxGeometry args={[0.12, 0.32, 0.55]} />
+                <meshStandardMaterial color="#020617" />
+              </mesh>
+              <Html position={[0.07, 0, 0]} center transform rotation={[0, Math.PI / 2, 0]} scale={0.12}>
+                <div className="bg-black/95 px-1 py-0.5 rounded border border-red-600 text-red-500 font-mono font-black text-[14px]">
+                  24
+                </div>
+              </Html>
+            </group>
+          </group>
+          <mesh position={[0, 0.8, 0]} castShadow>
+            <boxGeometry args={[0.42, 1.6, 0.42]} />
+            <meshStandardMaterial color="#1e3a8a" roughness={0.4} />
+          </mesh>
+        </group>
+      )}
+
+      {/* Tier 1: Rear Chain-Link Fence */}
+      {tier === 1 && (
+        <group position={[-5.3, -0.4, 0]}>
+          <mesh position={[0, 1.5, 0]}>
+            <boxGeometry args={[0.04, 3.0, 8.4]} />
+            <meshStandardMaterial color="#64748b" wireframe transparent opacity={0.55} />
+          </mesh>
+          {[-4, -1.3, 1.3, 4].map((pz) => (
+            <mesh key={pz} position={[0, 1.5, pz]}>
+              <cylinderGeometry args={[0.05, 0.05, 3.0, 8]} />
+              <meshStandardMaterial color="#334155" metalness={0.8} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* Tier 2 & 3: Sports Floodlight Towers */}
+      {tier >= 2 && (
+        <>
+          <group position={[-4.8, -0.4, -3.8]}>
+            <mesh position={[0, 2.5, 0]}>
+              <cylinderGeometry args={[0.08, 0.12, 5.0, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+            <mesh position={[0.2, 4.9, 0]} rotation={[0, 0, -Math.PI / 4]}>
+              <boxGeometry args={[0.45, 0.18, 0.6]} />
+              <meshStandardMaterial color="#f8fafc" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            <pointLight position={[0.5, 4.8, 0]} intensity={0.45} distance={12} color="#fef08a" />
+          </group>
+          <group position={[-4.8, -0.4, 3.8]}>
+            <mesh position={[0, 2.5, 0]}>
+              <cylinderGeometry args={[0.08, 0.12, 5.0, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+            <mesh position={[0.2, 4.9, 0]} rotation={[0, 0, -Math.PI / 4]}>
+              <boxGeometry args={[0.45, 0.18, 0.6]} />
+              <meshStandardMaterial color="#f8fafc" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            <pointLight position={[0.5, 4.8, 0]} intensity={0.45} distance={12} color="#fef08a" />
+          </group>
+        </>
+      )}
+
+      {/* Courtside Bench & Hydration */}
+      {tier >= 2 && (
+        <group position={[0, -0.4, 4.4]}>
+          <mesh position={[0, 0.25, 0]} castShadow>
+            <boxGeometry args={[3.2, 0.08, 0.5]} />
+            <meshStandardMaterial color={tier === 3 ? '#94a3b8' : '#334155'} metalness={tier === 3 ? 0.8 : 0.2} />
+          </mesh>
+          {[-1.2, 1.2].map((bx) => (
+            <mesh key={bx} position={[bx, 0.12, 0]}>
+              <cylinderGeometry args={[0.04, 0.04, 0.25, 8]} />
+              <meshStandardMaterial color="#0f172a" />
+            </mesh>
+          ))}
+          <mesh position={[1.8, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.22, 0.22, 0.5, 12]} />
+            <meshStandardMaterial color="#0284c7" roughness={0.3} />
+          </mesh>
+        </group>
+      )}
+
+      {/* Ball Rack with Basketballs */}
+      <group position={[-3.8, -0.4, 3.8]}>
+        <mesh position={[0, 0.45, 0]}>
+          <boxGeometry args={[0.35, 0.9, 1.2]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.8} wireframe />
+        </mesh>
+        {[-0.35, 0, 0.35].map((bz) => (
+          <mesh key={bz} position={[0, 0.65, bz]} castShadow>
+            <sphereGeometry args={[0.13, 12, 10]} />
+            <meshStandardMaterial color="#ea580c" roughness={0.7} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Animated Bouncing Basketball */}
+      <group ref={ballRef} position={[-2.0, -0.28, 0]}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.15, 14, 12]} />
+          <meshStandardMaterial color="#ea580c" roughness={0.65} metalness={0.05} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
+const BackyardFootballPitch: React.FC<SportsFacilityProps> = ({
+  tier,
+  ballRef,
+}) => {
+  return (
+    <group position={[14.5, 0, -13]}>
+      {/* Turf Foundation Pad (15m x 11m) */}
+      <mesh position={[0, -0.47, 0]} receiveShadow>
+        <boxGeometry args={[15.2, 0.08, 11.2]} />
+        <meshStandardMaterial color="#14532d" roughness={0.9} />
+      </mesh>
+
+      {/* Alternating Mowing Turf Grass Stripes */}
+      {[-5, -3, -1, 1, 3, 5].map((sx, idx) => (
+        <mesh key={sx} position={[sx * 1.25, -0.468, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[2.5, 10.8]} />
+          <meshStandardMaterial
+            color={idx % 2 === 0 ? '#15803d' : '#166534'}
+            roughness={0.85}
+          />
+        </mesh>
+      ))}
+
+      {/* Pitch Boundary Lines (White Chalk) */}
+      <mesh position={[0, -0.465, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[14.6, 10.4]} />
+        <meshBasicMaterial color="#ffffff" wireframe />
+      </mesh>
+
+      {/* Halfway Line */}
+      <mesh position={[0, -0.464, 0]}>
+        <boxGeometry args={[0.08, 0.002, 10.4]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Center Circle & Spot */}
+      <mesh position={[0, -0.463, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.7, 1.78, 32]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      <mesh position={[0, -0.462, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.15, 16]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Penalty Boxes (West & East) */}
+      {[-6.1, 6.1].map((px) => (
+        <group key={px} position={[px, -0.464, 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[2.4, 5.2]} />
+            <meshBasicMaterial color="#ffffff" wireframe />
+          </mesh>
+          <mesh position={[px > 0 ? -1.4 : 1.4, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.12, 12]} />
+            <meshBasicMaterial color="#ffffff" />
+          </mesh>
+        </group>
+      ))}
+
+      {/* 4 Corner Flags */}
+      {[ 
+        [-7.1, -5.0],
+        [7.1, -5.0],
+        [-7.1, 5.0],
+        [7.1, 5.0],
+      ].map(([fx, fz], idx) => (
+        <group key={idx} position={[fx, -0.4, fz]}>
+          <mesh position={[0, 0.65, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 1.3, 8]} />
+            <meshStandardMaterial color="#f8fafc" />
+          </mesh>
+          <mesh position={[0.12, 1.15, 0]}>
+            <boxGeometry args={[0.24, 0.16, 0.01]} />
+            <meshStandardMaterial color={idx % 2 === 0 ? '#ef4444' : '#0284c7'} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* TIER 1: Portable Mini Training Goals & Agility Cones */}
+      {tier === 1 && (
+        <>
+          <group position={[-7.2, -0.4, 0]}>
+            <mesh position={[0, 0.65, 0]}>
+              <boxGeometry args={[0.6, 1.3, 2.2]} />
+              <meshStandardMaterial color="#f8fafc" wireframe />
+            </mesh>
+          </group>
+          <group position={[7.2, -0.4, 0]}>
+            <mesh position={[0, 0.65, 0]}>
+              <boxGeometry args={[0.6, 1.3, 2.2]} />
+              <meshStandardMaterial color="#f8fafc" wireframe />
+            </mesh>
+          </group>
+          {[-3.5, -2.1, -0.7, 0.7, 2.1, 3.5].map((cx, i) => (
+            <mesh key={cx} position={[cx, -0.32, (i % 2 === 0 ? 0.6 : -0.6)]} castShadow>
+              <coneGeometry args={[0.12, 0.3, 8]} />
+              <meshStandardMaterial color="#f97316" roughness={0.4} />
+            </mesh>
+          ))}
+        </>
+      )}
+
+      {/* TIER 2 & 3: Full-Size Pro Tubular Steel Football Goals */}
+      {tier >= 2 && (
+        <>
+          <group position={[-7.3, -0.4, 0]}>
+            <mesh position={[0, 1.3, -1.8]}>
+              <cylinderGeometry args={[0.06, 0.06, 2.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 1.3, 1.8]}>
+              <cylinderGeometry args={[0.06, 0.06, 2.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 2.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.06, 0.06, 3.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[-0.6, 1.3, 0]}>
+              <boxGeometry args={[1.2, 2.5, 3.6]} />
+              <meshStandardMaterial color="#f8fafc" wireframe transparent opacity={0.65} />
+            </mesh>
+          </group>
+
+          <group position={[7.3, -0.4, 0]} rotation={[0, Math.PI, 0]}>
+            <mesh position={[0, 1.3, -1.8]}>
+              <cylinderGeometry args={[0.06, 0.06, 2.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 1.3, 1.8]}>
+              <cylinderGeometry args={[0.06, 0.06, 2.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 2.6, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.06, 0.06, 3.6, 12]} />
+              <meshStandardMaterial color="#ffffff" metalness={0.6} roughness={0.2} />
+            </mesh>
+            <mesh position={[-0.6, 1.3, 0]}>
+              <boxGeometry args={[1.2, 2.5, 3.6]} />
+              <meshStandardMaterial color="#f8fafc" wireframe transparent opacity={0.65} />
+            </mesh>
+          </group>
+        </>
+      )}
+
+      {/* TIER 2: Substitution Bench */}
+      {tier === 2 && (
+        <group position={[0, -0.4, 5.8]}>
+          <mesh position={[0, 0.3, 0]} castShadow>
+            <boxGeometry args={[4.2, 0.08, 0.6]} />
+            <meshStandardMaterial color="#334155" roughness={0.7} />
+          </mesh>
+          <mesh position={[-2.4, 0.35, 0]}>
+            <cylinderGeometry args={[0.26, 0.26, 0.55, 12]} />
+            <meshStandardMaterial color="#10b981" roughness={0.4} />
+          </mesh>
+        </group>
+      )}
+
+      {/* TIER 3: Covered Team Dugouts */}
+      {tier === 3 && (
+        <group position={[0, -0.4, 5.9]}>
+          <mesh position={[0, 1.25, 0]} castShadow>
+            <boxGeometry args={[5.4, 0.08, 1.4]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.7} roughness={0.3} />
+          </mesh>
+          <mesh position={[0, 0.9, 0.65]}>
+            <boxGeometry args={[5.2, 1.6, 0.06]} />
+            <meshPhysicalMaterial color="#93c5fd" transparent opacity={0.4} transmission={0.7} />
+          </mesh>
+          {[-2.0, -1.2, -0.4, 0.4, 1.2, 2.0].map((sx, idx) => (
+            <mesh key={sx} position={[sx, 0.38, 0.1]} castShadow>
+              <boxGeometry args={[0.48, 0.55, 0.48]} />
+              <meshStandardMaterial color={idx % 2 === 0 ? '#1e3a8a' : '#0284c7'} roughness={0.4} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* TIER 3: Electronic LED Stadium Scoreboard */}
+      {tier === 3 && (
+        <group position={[0, -0.4, -6.2]}>
+          <mesh position={[-2.2, 2.5, 0]}>
+            <cylinderGeometry args={[0.08, 0.12, 5.0, 8]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.8} />
+          </mesh>
+          <mesh position={[2.2, 2.5, 0]}>
+            <cylinderGeometry args={[0.08, 0.12, 5.0, 8]} />
+            <meshStandardMaterial color="#1e293b" metalness={0.8} />
+          </mesh>
+          <mesh position={[0, 4.4, 0]}>
+            <boxGeometry args={[5.8, 1.6, 0.35]} />
+            <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.8} />
+          </mesh>
+          <Html position={[0, 4.4, 0.2]} center transform scale={0.16}>
+            <div className="bg-slate-950/95 border-2 border-emerald-500/80 rounded-xl p-2.5 shadow-2xl flex flex-col items-center gap-1 select-none pointer-events-none min-w-[280px]">
+              <div className="flex items-center justify-between w-full text-[11px] font-black text-slate-400 border-b border-slate-800 pb-1">
+                <span className="text-emerald-400 uppercase tracking-widest">PRO DYNASTY ARENA</span>
+                <span className="text-amber-400 animate-pulse">78' LIVE</span>
+              </div>
+              <div className="flex items-center justify-between w-full px-2 pt-0.5">
+                <div className="text-center">
+                  <div className="text-[12px] font-black text-cyan-300">DYNASTY FC</div>
+                  <div className="text-[24px] font-black text-white font-mono leading-none">3</div>
+                </div>
+                <div className="text-[14px] font-black text-slate-500 font-mono">VS</div>
+                <div className="text-center">
+                  <div className="text-[12px] font-black text-slate-300">RIVALS</div>
+                  <div className="text-[24px] font-black text-slate-300 font-mono leading-none">0</div>
+                </div>
+              </div>
+            </div>
+          </Html>
+        </group>
+      )}
+
+      {/* TIER 3: Sideline Sponsor A-Boards */}
+      {tier === 3 && (
+        <group position={[0, -0.4, -5.5]}>
+          {[-4.5, -1.5, 1.5, 4.5].map((bx) => (
+            <mesh key={bx} position={[bx, 0.25, 0]} rotation={[-Math.PI / 12, 0, 0]} castShadow>
+              <boxGeometry args={[2.7, 0.45, 0.15]} />
+              <meshStandardMaterial color="#0f172a" metalness={0.5} roughness={0.3} />
+            </mesh>
+          ))}
+        </group>
+      )}
+
+      {/* Stadium Floodlight Towers (Tier 2 & 3) */}
+      {tier >= 2 && (
+        <>
+          <group position={[-7.5, -0.4, -5.4]}>
+            <mesh position={[0, 3.2, 0]}>
+              <cylinderGeometry args={[0.08, 0.15, 6.4, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+            <mesh position={[0.3, 6.3, 0.3]} rotation={[Math.PI / 4, 0, -Math.PI / 4]}>
+              <boxGeometry args={[0.8, 0.25, 0.5]} />
+              <meshStandardMaterial color="#f8fafc" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            <pointLight position={[0.5, 6.2, 0.5]} intensity={0.55} distance={15} color="#e0f2fe" />
+          </group>
+          <group position={[7.5, -0.4, -5.4]}>
+            <mesh position={[0, 3.2, 0]}>
+              <cylinderGeometry args={[0.08, 0.15, 6.4, 8]} />
+              <meshStandardMaterial color="#1e293b" metalness={0.7} />
+            </mesh>
+            <mesh position={[-0.3, 6.3, 0.3]} rotation={[Math.PI / 4, 0, Math.PI / 4]}>
+              <boxGeometry args={[0.8, 0.25, 0.5]} />
+              <meshStandardMaterial color="#f8fafc" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            <pointLight position={[-0.5, 6.2, 0.5]} intensity={0.55} distance={15} color="#e0f2fe" />
+          </group>
+        </>
+      )}
+
+      {/* Animated Football (Soccer Ball) */}
+      <group ref={ballRef} position={[0, -0.32, 0]}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.16, 14, 12]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.6} />
+        </mesh>
+      </group>
+    </group>
+  );
+};
+
 // 2. MAIN ENVIRONMENT COMPONENT
 // ============================================================================
 
@@ -381,6 +919,8 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
   const jumbotronRef = useRef<Mesh>(null);
   const trafficCar1Ref = useRef<Group>(null);
   const trafficCar2Ref = useRef<Group>(null);
+  const bballRef = useRef<Group>(null);
+  const soccerBallRef = useRef<Group>(null);
 
   // Subtle vehicle idle vibration, living traffic movement, and screen glows
   useFrame(({ clock }, delta) => {
@@ -431,6 +971,22 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
         trafficCar2Ref.current.position.x = 50;
       }
     }
+    // Animated bouncing basketball in backyard
+    if (bballRef.current) {
+      const bCycle = (t * 4.2) % (Math.PI * 2);
+      bballRef.current.position.y = -0.28 + Math.abs(Math.sin(bCycle)) * 0.95;
+      bballRef.current.rotation.x = t * 3.5;
+    }
+
+    // Animated rolling/passing soccer ball in backyard
+    if (soccerBallRef.current) {
+      const sCycle = Math.sin(t * 1.4);
+      soccerBallRef.current.position.x = sCycle * 2.8;
+      soccerBallRef.current.position.z = Math.cos(t * 1.4) * 1.2;
+      soccerBallRef.current.rotation.y = t * 2.0;
+      soccerBallRef.current.rotation.z = sCycle * 1.5;
+    }
+
   });
 
   return (
@@ -445,35 +1001,32 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
       </mesh>
 
       {/* Main Property Paved Stone Lawn Edging */}
-      <mesh position={[7, -0.585, 7]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <planeGeometry args={[56, 42]} />
+      <mesh position={[7, -0.585, -2]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[68, 58]} />
         <meshStandardMaterial color="#15803d" roughness={0.82} />
       </mesh>
 
       {/* ============================================================ */}
-      {/* 2. NORTH BACKYARD (ELIMINATES HORIZON VOID BEHIND HOUSE)    */}
+      {/* 2. NORTH BACKYARD SPORTS COMPLEX (UPGRADEABLE)               */}
       {/* ============================================================ */}
-      {/* Modern Horizontal Cedar Wood Privacy Fence along north edge */}
-      <group position={[7, -0.5, -1.8]}>
-        {/* Concrete Base Curb */}
+      {/* Estate Perimeter Privacy Fences (North, West, East) */}
+      {/* North Perimeter Privacy Fence (z = -26.5) */}
+      <group position={[7, -0.5, -26.5]}>
         <mesh position={[0, 0.08, 0]}>
-          <boxGeometry args={[34, 0.16, 0.25]} />
+          <boxGeometry args={[40, 0.16, 0.25]} />
           <meshStandardMaterial color="#334155" roughness={0.8} />
         </mesh>
-        {/* Cedar Fence Panels */}
         <mesh position={[0, 1.1, 0]} castShadow>
-          <boxGeometry args={[33.8, 1.9, 0.08]} />
+          <boxGeometry args={[39.8, 1.9, 0.08]} />
           <meshStandardMaterial color="#78350f" roughness={0.75} />
         </mesh>
-        {/* Horizontal Cedar Slat Grooves */}
         {[-0.6, -0.2, 0.2, 0.6].map((sy) => (
           <mesh key={sy} position={[0, 1.1 + sy, 0.045]}>
-            <boxGeometry args={[33.8, 0.03, 0.02]} />
+            <boxGeometry args={[39.8, 0.03, 0.02]} />
             <meshStandardMaterial color="#451a03" roughness={0.9} />
           </mesh>
         ))}
-        {/* Dark Metal Fence Posts */}
-        {[-16, -11, -6, -1, 4, 9, 14].map((px) => (
+        {[-19, -13, -7, -1, 5, 11, 17].map((px) => (
           <mesh key={px} position={[px, 1.15, 0]} castShadow>
             <boxGeometry args={[0.16, 2.1, 0.16]} />
             <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.3} />
@@ -481,9 +1034,114 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
         ))}
       </group>
 
-      {/* Neighboring Suburban Houses North of Fence (Deepen Realism) */}
-      {/* North House 1: Contemporary Villa (x = -8, z = -12) */}
-      <group position={[-8, -0.5, -12]}>
+      {/* West Perimeter Side Fence (x = -9, stretching z = 0 to -26.5) */}
+      <group position={[-9, -0.5, -13.25]}>
+        <mesh position={[0, 1.1, 0]} castShadow>
+          <boxGeometry args={[0.08, 1.9, 26.5]} />
+          <meshStandardMaterial color="#78350f" roughness={0.75} />
+        </mesh>
+        {[-11, -5, 0, 5, 11].map((pz) => (
+          <mesh key={pz} position={[0, 1.15, pz]} castShadow>
+            <boxGeometry args={[0.16, 2.1, 0.16]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* East Perimeter Side Fence (x = 23, stretching z = 0 to -26.5) */}
+      <group position={[23, -0.5, -13.25]}>
+        <mesh position={[0, 1.1, 0]} castShadow>
+          <boxGeometry args={[0.08, 1.9, 26.5]} />
+          <meshStandardMaterial color="#78350f" roughness={0.75} />
+        </mesh>
+        {[-11, -5, 0, 5, 11].map((pz) => (
+          <mesh key={pz} position={[0, 1.15, pz]} castShadow>
+            <boxGeometry args={[0.16, 2.1, 0.16]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Backyard Terrace Patio (attached to rear of house) */}
+      <group position={[7, -0.48, -1.5]}>
+        <mesh receiveShadow>
+          <boxGeometry args={[14, 0.14, 2.8]} />
+          <meshStandardMaterial color="#334155" roughness={0.75} />
+        </mesh>
+        {/* Terrace Step */}
+        <mesh position={[0, -0.04, -1.5]}>
+          <boxGeometry args={[14.4, 0.08, 0.5]} />
+          <meshStandardMaterial color="#475569" roughness={0.7} />
+        </mesh>
+        {/* Rear Sliding Glass Door Frame */}
+        <mesh position={[0, 1.5, 1.3]}>
+          <boxGeometry args={[3.2, 2.6, 0.1]} />
+          <meshStandardMaterial color="#0f172a" />
+        </mesh>
+        <mesh position={[0, 1.5, 1.3]}>
+          <boxGeometry args={[3.0, 2.4, 0.04]} />
+          <meshPhysicalMaterial color="#99f6e4" transparent opacity={0.35} transmission={0.6} />
+        </mesh>
+      </group>
+
+      {/* Cobblestone Garden Walkways to Sports Courts */}
+      {/* Path to Basketball Court (West) */}
+      {[-1.0, -1.8, -2.5, -3.2].map((wx, idx) => (
+        <mesh key={wx} position={[wx, -0.46, -4.5 - idx * 2.0]} receiveShadow>
+          <boxGeometry args={[1.6, 0.02, 1.4]} />
+          <meshStandardMaterial color="#64748b" roughness={0.8} />
+        </mesh>
+      ))}
+
+      {/* Path to Football Pitch (East) */}
+      {[10.5, 11.5, 12.5, 13.5].map((wx, idx) => (
+        <mesh key={wx} position={[wx, -0.46, -4.5 - idx * 2.0]} receiveShadow>
+          <boxGeometry args={[1.6, 0.02, 1.4]} />
+          <meshStandardMaterial color="#64748b" roughness={0.8} />
+        </mesh>
+      ))}
+
+      {/* Solar Landscape Path Lights */}
+      {[
+        [-1.8, -4.5],
+        [-3.2, -8.5],
+        [10.5, -4.5],
+        [13.5, -8.5],
+        [1.5, -2.5],
+        [12.5, -2.5],
+      ].map(([lx, lz], i) => (
+        <group key={i} position={[lx, -0.45, lz]}>
+          <mesh position={[0, 0.22, 0]}>
+            <cylinderGeometry args={[0.04, 0.04, 0.44, 8]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} />
+          </mesh>
+          <mesh position={[0, 0.44, 0]}>
+            <cylinderGeometry args={[0.08, 0.06, 0.1, 8]} />
+            <meshStandardMaterial color="#fef08a" emissive="#fef08a" emissiveIntensity={0.5} />
+          </mesh>
+          <pointLight position={[0, 0.45, 0]} intensity={0.15} distance={3.5} color="#fef08a" />
+        </group>
+      ))}
+
+      {/* 🏀 UPGRADEABLE BASKETBALL COURT (WEST BACKYARD) */}
+      <BackyardBasketballCourt
+        tier={(empire.basketballTier ?? 1) as 1 | 2 | 3}
+        primaryColor={empire.branding.primaryColor}
+        accentColor={empire.branding.accentColor}
+        ballRef={bballRef}
+      />
+
+      {/* ⚽ UPGRADEABLE FOOTBALL PITCH (EAST BACKYARD) */}
+      <BackyardFootballPitch
+        tier={(empire.footballTier ?? 1) as 1 | 2 | 3}
+        primaryColor={empire.branding.primaryColor}
+        accentColor={empire.branding.accentColor}
+        ballRef={soccerBallRef}
+      />
+
+      {/* Neighboring Suburban Houses North of Fence (Moved further back) */}
+      {/* North House 1: Contemporary Villa (x = -10, z = -34) */}
+      <group position={[-10, -0.5, -34]}>
         <mesh position={[0, 2.4, 0]} castShadow>
           <boxGeometry args={[11, 4.8, 8]} />
           <meshStandardMaterial color="#334155" roughness={0.8} />
@@ -492,7 +1150,6 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
           <boxGeometry args={[4.2, 4.2, 8.2]} />
           <meshStandardMaterial color="#0f172a" roughness={0.4} />
         </mesh>
-        {/* Warm Illuminated Windows */}
         <mesh position={[2, 2.0, 4.02]}>
           <planeGeometry args={[2.8, 1.8]} />
           <meshBasicMaterial color="#fef08a" />
@@ -503,8 +1160,8 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
         </mesh>
       </group>
 
-      {/* North House 2: Scandinavian Gable Residence (x = 10, z = -14) */}
-      <group position={[10, -0.5, -14]}>
+      {/* North House 2: Scandinavian Gable Residence (x = 14, z = -36) */}
+      <group position={[14, -0.5, -36]}>
         <mesh position={[0, 2.6, 0]} castShadow>
           <boxGeometry args={[12, 5.2, 9]} />
           <meshStandardMaterial color="#1e293b" roughness={0.85} />
@@ -519,24 +1176,22 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
         </mesh>
       </group>
 
-      {/* Lush Tree Line along North Perimeter */}
+      {/* Lush Tree Line along North Perimeter (z = -29 to -33) */}
       {[
-        [-17, -4.5, 4.5, 1.2],
-        [-13, -6.5, 5.2, 1.4],
-        [-4, -5.2, 4.8, 1.3],
-        [1, -6.0, 5.5, 1.5],
-        [7, -5.5, 4.2, 1.1],
-        [15, -6.2, 5.8, 1.6],
-        [21, -4.8, 4.6, 1.2],
-        [26, -5.8, 5.0, 1.3],
+        [-17, -30, 4.5, 1.2],
+        [-13, -32, 5.2, 1.4],
+        [-4, -30.5, 4.8, 1.3],
+        [1, -31.5, 5.5, 1.5],
+        [7, -30, 4.2, 1.1],
+        [15, -31, 5.8, 1.6],
+        [21, -30, 4.6, 1.2],
+        [26, -32, 5.0, 1.3],
       ].map(([tx, tz, th, tr], idx) => (
         <group key={idx} position={[tx, -0.5, tz]}>
-          {/* Wood Trunk */}
           <mesh position={[0, th * 0.35, 0]} castShadow>
             <cylinderGeometry args={[tr * 0.16, tr * 0.22, th * 0.7, 8]} />
             <meshStandardMaterial color="#542b18" roughness={0.9} />
           </mesh>
-          {/* Evergreen Pine / Canopy Layers */}
           <mesh position={[0, th * 0.7, 0]} castShadow>
             <coneGeometry args={[tr * 1.3, th * 0.65, 8]} />
             <meshStandardMaterial color={idx % 2 === 0 ? '#14532d' : '#15803d'} roughness={0.85} />
@@ -631,10 +1286,8 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
 
       {/* Modern Double Glass Sliding Doors */}
       <group position={[6.9, 1.3, 13.9]}>
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[2.5, 2.6, 0.1]} />
-          <meshStandardMaterial color="#0f172a" metalness={0.7} roughness={0.3} />
-        </mesh>
+        {[-1.23, 0, 1.23].map(x => <mesh key={x} position={[x, 0, 0]}><boxGeometry args={[0.06, 2.6, 0.1]} /><meshStandardMaterial color="#cbd5e1" metalness={0.4} /></mesh>)}
+        {[-1.28, 1.28].map(y => <mesh key={y} position={[0, y, 0]}><boxGeometry args={[2.5, 0.06, 0.1]} /><meshStandardMaterial color="#cbd5e1" metalness={0.4} /></mesh>)}
         <mesh position={[-0.58, 0, 0.01]}>
           <boxGeometry args={[1.1, 2.4, 0.04]} />
           <meshPhysicalMaterial
@@ -738,44 +1391,16 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
       </group>
 
       {/* ============================================================ */}
-      {/* 6. DRIVEWAY BASKETBALL HALF-COURT & PRO HOOP                 */}
+      {/* 6. MOTORSPORTS DRIVEWAY PARKING & APPROACH                   */}
       {/* ============================================================ */}
       <group position={[10.5, 0, 15.0]}>
         <mesh position={[0, -0.405, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[2.2, 2.0]} />
-          <meshBasicMaterial color="#334155" />
+          <planeGeometry args={[3.2, 2.8]} />
+          <meshBasicMaterial color="#1e293b" />
         </mesh>
         <mesh position={[0, -0.404, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.7, 0.74, 24]} />
-          <meshBasicMaterial color="#f8fafc" />
-        </mesh>
-        {/* Basketball Hoop Post & Acrylic Backboard */}
-        <group position={[0.3, -0.4, -0.5]}>
-          <mesh position={[0, 1.4, 0]} castShadow>
-            <boxGeometry args={[0.12, 2.4, 0.12]} />
-            <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.3} />
-          </mesh>
-          <group position={[0, 2.65, 0.72]}>
-            <mesh castShadow>
-              <boxGeometry args={[1.3, 0.85, 0.04]} />
-              <meshPhysicalMaterial
-                color="#e0f2fe"
-                transparent
-                opacity={0.55}
-                roughness={0.1}
-                metalness={0.2}
-                transmission={0.7}
-              />
-            </mesh>
-            <mesh position={[0, -0.22, 0.25]} rotation={[Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[0.2, 0.02, 10, 20]} />
-              <meshStandardMaterial color="#ea580c" roughness={0.4} />
-            </mesh>
-          </group>
-        </group>
-        <mesh position={[-0.4, -0.34, 0.4]} castShadow>
-          <sphereGeometry args={[0.11, 14, 12]} />
-          <meshStandardMaterial color="#ea580c" roughness={0.75} />
+          <planeGeometry args={[3.0, 2.6]} />
+          <meshBasicMaterial color="#38bdf8" wireframe />
         </mesh>
       </group>
 
@@ -1067,7 +1692,7 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
                 ]}
               />
               <meshStandardMaterial
-                color={empire.branding.primaryColor}
+                color={empire.vipInventory.includes('hypercar_wrap') ? '#facc15' : empire.branding.primaryColor}
                 metalness={0.85}
                 roughness={0.2}
               />
@@ -1158,11 +1783,15 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
       {/* STORE 1: "DYNASTY 24/7 MART" (The Pro Gamers' Convenience Store) */}
       {/* ------------------------------------------------------------ */}
       <group position={[-8, -0.45, 32.2]}>
-        {/* Main Building Body */}
-        <mesh position={[0, 1.9, 0]} castShadow>
-          <boxGeometry args={[7.8, 3.8, 5.2]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.8} />
-        </mesh>
+        {/* Open cutaway interior so pros visibly enter, browse, and leave. */}
+        <mesh position={[0, 0.04, 0]} receiveShadow><boxGeometry args={[7.8, 0.12, 5.2]} /><meshStandardMaterial color="#dbeafe" roughness={0.7} /></mesh>
+        <mesh position={[0, 1.9, 2.54]} castShadow><boxGeometry args={[7.8, 3.8, 0.12]} /><meshStandardMaterial color="#a7b8c8" /></mesh>
+        {[-3.84, 3.84].map(x => <mesh key={x} position={[x, 1.9, 0]} castShadow><boxGeometry args={[0.12, 3.8, 5.2]} /><meshStandardMaterial color="#cbd5e1" /></mesh>)}
+        {[-2.5, 2.1].map(x => <group key={x} position={[x, 0, 1.05]}>
+          <mesh position={[0, 0.66, 0]} castShadow><boxGeometry args={[0.65, 1.3, 2.5]} /><meshStandardMaterial color="#64748b" /></mesh>
+          {[0.3, 0.8, 1.25].map(y => <mesh key={y} position={[0.36, y, 0]}><boxGeometry args={[0.08, 0.1, 2.3]} /><meshStandardMaterial color="#fbbf24" /></mesh>)}
+        </group>)}
+        <mesh position={[0, 0.55, 1.85]} castShadow><boxGeometry args={[2.4, 1.0, 0.6]} /><meshStandardMaterial color="#10b981" /></mesh>
         {/* Large Glass Storefront Display Window */}
         <mesh position={[0, 1.2, -2.62]}>
           <planeGeometry args={[6.6, 2.0]} />
@@ -1253,11 +1882,15 @@ export const HouseEnvironment3D: React.FC<{ empire: EmpireState }> = ({ empire }
       {/* STORE 2: "GG BOBA & ESPORTS CAFE" (Team Meetup & Lounge)     */}
       {/* ------------------------------------------------------------ */}
       <group position={[3.2, -0.45, 32.2]}>
-        {/* Scandinavian Wood & Black Steel Cafe Facade */}
-        <mesh position={[0, 1.8, 0]} castShadow>
-          <boxGeometry args={[7.2, 3.6, 5.0]} />
-          <meshStandardMaterial color="#2d1d12" roughness={0.7} />
-        </mesh>
+        {/* Open cafe interior with a service bar and seating. */}
+        <mesh position={[0, 0.04, 0]} receiveShadow><boxGeometry args={[7.2, 0.12, 5.0]} /><meshStandardMaterial color="#f5deb3" roughness={0.75} /></mesh>
+        <mesh position={[0, 1.8, 2.44]} castShadow><boxGeometry args={[7.2, 3.6, 0.12]} /><meshStandardMaterial color="#b45309" /></mesh>
+        {[-3.54, 3.54].map(x => <mesh key={x} position={[x, 1.8, 0]} castShadow><boxGeometry args={[0.12, 3.6, 5.0]} /><meshStandardMaterial color="#c08457" /></mesh>)}
+        <mesh position={[0, 0.55, 1.8]} castShadow><boxGeometry args={[3.8, 1, 0.7]} /><meshStandardMaterial color="#7c2d12" /></mesh>
+        {[-2.1, 2.1].map(x => <group key={x} position={[x, 0, 0.9]}>
+          <mesh position={[0, 0.55, 0]}><cylinderGeometry args={[0.42, 0.42, 0.08, 16]} /><meshStandardMaterial color="#f8fafc" /></mesh>
+          <mesh position={[0, 0.25, 0]}><cylinderGeometry args={[0.07, 0.07, 0.5, 10]} /><meshStandardMaterial color="#475569" /></mesh>
+        </group>)}
         {/* Timber Slat Wall Accents */}
         {[-2.8, -1.4, 0, 1.4, 2.8].map((sx) => (
           <mesh key={sx} position={[sx, 1.8, -2.52]}>

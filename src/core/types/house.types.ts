@@ -29,6 +29,8 @@ export interface HouseStation {
   facing: Facing;
   pose: StationPose;
   minLevel: number;
+  /** Minimum district tier for destinations across the street. */
+  minDistrictTier?: number;
   /** Chat partner spot: two players on break here talk to each other. */
   partnerId?: string;
   prop?: 'cup' | 'snack' | 'phone';

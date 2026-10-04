@@ -20,7 +20,7 @@ function ConstructionZone({ x, z, w, d }: { x: number; z: number; w: number; d: 
       {/* Bare concrete subfloor markings (chalk crosshatch) */}
       <mesh position={[0, 0.012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[w - 0.4, d - 0.4]} />
-        <meshStandardMaterial color="#334155" roughness={0.95} />
+        <meshStandardMaterial color="#a8b8c8" roughness={0.95} />
       </mesh>
 
       {/* Wooden Cargo Pallet with Cardboard Gear Crates */}
@@ -1266,11 +1266,13 @@ function HallwayContent() {
 // MAIN HOUSE FURNITURE 3D ORCHESTRATOR
 // -------------------------------------------------------------
 export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }) => {
+  const cosmetics = useGameStore((s) => s.empire.vipInventory);
   const scrimUnlocked = facilities.scrim_lab?.isUnlocked ?? true;
   const streamUnlocked = facilities.streaming_pod?.isUnlocked ?? false;
   const analystUnlocked = facilities.analyst_room?.isUnlocked ?? false;
   const gymUnlocked = facilities.gym?.isUnlocked ?? false;
   const merchUnlocked = facilities.merch_store?.isUnlocked ?? false;
+  const cafeteriaUnlocked = facilities.cafeteria?.isUnlocked ?? false;
 
   return (
     <group position={[0, 0, 0]}>
@@ -1328,8 +1330,31 @@ export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }
         <ConstructionZone x={11.0} z={7.5} w={2.6} d={6.1} />
       )}
 
-      {/* 6. HALLWAY COMMONS (Vending, Water Cooler) */}
+      {/* 6. CAFETERIA - built only after funding or cash unlock */}
+      {cafeteriaUnlocked ? <group>
+        <mesh position={[-4.7, 0.45, 8.5]} castShadow><boxGeometry args={[3.5, 0.9, 0.65]} /><meshStandardMaterial color="#d97706" roughness={0.75} /></mesh>
+        <mesh position={[-4.7, 0.92, 8.5]} castShadow><boxGeometry args={[3.55, 0.07, 0.72]} /><meshStandardMaterial color="#fef3c7" roughness={0.55} /></mesh>
+        {[9.9, 11.6].map(z => <group key={z}>
+          <mesh position={[-3.9, 0.42, z]} castShadow><cylinderGeometry args={[0.63, 0.63, 0.08, 16]} /><meshStandardMaterial color="#f8fafc" /></mesh>
+          <mesh position={[-3.9, 0.2, z]}><cylinderGeometry args={[0.08, 0.08, 0.4, 10]} /><meshStandardMaterial color="#475569" /></mesh>
+          <mesh position={[-2.9, 0.24, z]} castShadow><boxGeometry args={[0.48, 0.48, 0.5]} /><meshStandardMaterial color="#fb923c" /></mesh>
+        </group>)}
+      </group> : <ConstructionZone x={-5.4} z={7.5} w={5.2} d={6.1} />}
+
+      {/* HALLWAY COMMONS (Vending, Water Cooler) */}
       <HallwayContent />
+      {scrimUnlocked && cosmetics.includes('rgb_neon') && <group position={[3.4, 1.2, 0.55]}>
+        <mesh><boxGeometry args={[2.2, 0.32, 0.05]} /><meshStandardMaterial color="#22d3ee" emissive="#06b6d4" emissiveIntensity={1.8} /></mesh>
+        <mesh position={[0, 0, 0.04]}><boxGeometry args={[1.8, 0.08, 0.02]} /><meshBasicMaterial color="#f0abfc" /></mesh>
+      </group>}
+      {cafeteriaUnlocked && cosmetics.includes('luxury_arcade') && <group position={[-6.2, 0.8, 10.9]}>
+        <mesh castShadow><boxGeometry args={[0.6, 1.6, 0.7]} /><meshStandardMaterial color="#7c3aed" roughness={0.3} /></mesh>
+        <mesh position={[0, 0.25, 0.36]}><boxGeometry args={[0.48, 0.55, 0.02]} /><meshBasicMaterial color="#22d3ee" /></mesh>
+      </group>}
+      {cosmetics.includes('gold_pedestal') && <group position={[7.75, 0.45, 6.85]}>
+        <mesh castShadow><cylinderGeometry args={[0.32, 0.42, 0.9, 12]} /><meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} /></mesh>
+        <mesh position={[0, 0.57, 0]}><octahedronGeometry args={[0.23]} /><meshStandardMaterial color="#fef08a" metalness={0.6} /></mesh>
+      </group>}
     </group>
   );
 };

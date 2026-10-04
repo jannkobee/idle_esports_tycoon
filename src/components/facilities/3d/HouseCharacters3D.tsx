@@ -217,7 +217,7 @@ function CharacterModel({
   const ActivityIcon = ACTIVITY_ICONS[agent.activity] ?? Coffee;
 
   return (
-    <group position={[agent.x, 0, agent.y]}>
+    <group position={[agent.x, agent.y >= 16 ? -0.4 : agent.y >= 14 ? -0.35 : agent.x < 0 || agent.x > 14 ? -0.45 : 0, agent.y]}>
       {selected && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.42, 24]} />
@@ -454,6 +454,10 @@ function CharacterModel({
             <meshStandardMaterial color="#f8fafc" roughness={0.4} />
           </mesh>
         </group>
+        {agent.stationId === 'outside_football_drills' && agent.mode === 'working' && <mesh position={[0.25, 0.13, 0.34]} castShadow>
+          <sphereGeometry args={[0.12, 12, 10]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.75} />
+        </mesh>}
       </group>
     </group>
   );

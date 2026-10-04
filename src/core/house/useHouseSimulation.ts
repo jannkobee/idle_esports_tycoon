@@ -17,8 +17,8 @@ interface HouseSimulationStore {
   agents: SimAgent[];
   selectedPlayerId: string | null;
   setSelectedPlayerId: (id: string | null) => void;
-  initialize: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>) => void;
-  sync: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>) => void;
+  initialize: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>, districtTier?: number) => void;
+  sync: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>, districtTier?: number) => void;
   step: (dt: number, roster: ProPlayer[]) => void;
 }
 
@@ -31,21 +31,21 @@ export const useHouseSimulationStore = create<HouseSimulationStore>((set, get) =
     set({ selectedPlayerId: id });
   },
 
-  initialize: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>) => {
-    const sim = createHouseSim(roster, facilities);
+  initialize: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>, districtTier = 1) => {
+    const sim = createHouseSim(roster, facilities, 42, districtTier);
     set({
       sim,
       agents: [...sim.agents],
     });
   },
 
-  sync: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>) => {
+  sync: (roster: ProPlayer[], facilities: Record<FacilityId, Facility>, districtTier = 1) => {
     const { sim } = get();
     if (!sim) {
-      get().initialize(roster, facilities);
+      get().initialize(roster, facilities, districtTier);
       return;
     }
-    syncHouseSim(sim, roster, facilities);
+    syncHouseSim(sim, roster, facilities, districtTier);
     set({ agents: [...sim.agents] });
   },
 
@@ -70,6 +70,7 @@ export const useHouseSimulationStore = create<HouseSimulationStore>((set, get) =
 export function useHouseSimulationLoop() {
   const roster = useGameStore(s => s.roster);
   const facilities = useGameStore(s => s.facilities);
+  const districtTier = useGameStore(s => s.empire.districtTier);
   const applyActivityGains = useGameStore(s => s.applyActivityGains);
 
   const initialize = useHouseSimulationStore(s => s.initialize);
@@ -84,16 +85,16 @@ export function useHouseSimulationLoop() {
   useEffect(() => {
     if (!initializedRef.current) {
       initializedRef.current = true;
-      initialize(roster, facilities);
+      initialize(roster, facilities, districtTier);
     }
-  }, [initialize, roster, facilities]);
+  }, [initialize, roster, facilities, districtTier]);
 
   // Sync when roster or facilities change
   useEffect(() => {
     if (initializedRef.current) {
-      sync(roster, facilities);
+      sync(roster, facilities, districtTier);
     }
-  }, [roster, facilities, sync]);
+  }, [roster, facilities, districtTier, sync]);
 
   // requestAnimationFrame runner loop
   useEffect(() => {

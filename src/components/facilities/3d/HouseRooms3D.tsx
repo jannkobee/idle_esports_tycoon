@@ -17,6 +17,10 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
   onSelectRoom,
 }) => {
   const wallpaperStyle = useGameStore((s) => s.houseInterior.wallpaperStyle) ?? 'default';
+  const flooringStyle = useGameStore((s) => s.houseInterior.flooringStyle) ?? 'default';
+  const facadeStyle = useGameStore((s) => s.houseInterior.facadeStyle) ?? 'default';
+  const hallColor = flooringStyle === 'oak' ? '#c99560' : flooringStyle === 'marble' ? '#f8fafc' : flooringStyle === 'neon' ? '#67e8f9' : '#d1d5db';
+  const facadeColor = facadeStyle === 'sandstone' ? '#f5deb3' : facadeStyle === 'glass' ? '#a5d8ed' : facadeStyle === 'carbon' ? '#64748b' : '#e2e8f0';
 
   const wallColor =
     wallpaperStyle === 'cyberpunk'
@@ -53,12 +57,12 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
       {/* Horizontal Hall (H1: x: 0.4 - 13.6, z: 6.2 - 7.5) */}
       <mesh position={[7, 0.005, 6.85]} receiveShadow>
         <boxGeometry args={[13.2, 0.01, 1.3]} />
-        <meshStandardMaterial color="#d1d5db" roughness={0.65} metalness={0.05} />
+        <meshStandardMaterial color={hallColor} roughness={0.65} metalness={0.05} />
       </mesh>
       {/* Vertical Hall (H2: x: 6.4 - 7.4, z: 0.4 - 14.0) */}
       <mesh position={[6.9, 0.006, 7.2]} receiveShadow>
         <boxGeometry args={[1.0, 0.01, 13.6]} />
-        <meshStandardMaterial color="#e2e8f0" roughness={0.65} metalness={0.05} />
+        <meshStandardMaterial color={hallColor} roughness={0.65} metalness={0.05} />
       </mesh>
 
       {/* Hallway Accent Inlay Strips (Lying Flat on Floor) */}
@@ -96,7 +100,7 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
               <meshStandardMaterial
                 color={
                   !isUnlocked
-                    ? '#1e293b' // Bare unfinished concrete for locked rooms
+                    ? '#a8b8c8' // Light unfinished concrete keeps locked rooms visible
                     : room.id === 'scrim_lab'
                     ? '#0f172a' // Dark tech slate
                     : room.id === 'streaming_pod'
@@ -206,7 +210,7 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
         {/* Main Solid Wall Portion */}
         <mesh position={[0, 0, 0]} castShadow receiveShadow>
           <boxGeometry args={[13.4, 3.0, 0.15]} />
-          <meshStandardMaterial color="#e2e8f0" roughness={0.7} />
+          <meshStandardMaterial color={facadeColor} roughness={0.7} />
         </mesh>
         {/* Wall Baseboard Trim */}
         <mesh position={[0, -1.42, 0.09]}>
@@ -216,11 +220,9 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
         {/* Large Modern Panoramic Ribbon Windows */}
         {[2.2, 5.2, 8.8, 11.8].map((wx) => (
           <group key={wx} position={[wx - 7, 0.2, 0.01]}>
-            {/* Window Frame */}
-            <mesh>
-              <boxGeometry args={[2.5, 1.8, 0.2]} />
-              <meshStandardMaterial color="#0f172a" metalness={0.6} roughness={0.3} />
-            </mesh>
+            {/* Open frame: no opaque slab behind the glass. */}
+            {[-1.21, 1.21].map(edge => <mesh key={edge} position={[edge, 0, 0]}><boxGeometry args={[0.08, 1.8, 0.2]} /><meshStandardMaterial color="#94a3b8" /></mesh>)}
+            {[-0.86, 0.86].map(edge => <mesh key={edge} position={[0, edge, 0]}><boxGeometry args={[2.5, 0.08, 0.2]} /><meshStandardMaterial color="#94a3b8" /></mesh>)}
             {/* Window Glass */}
             <mesh position={[0, 0, 0]}>
               <boxGeometry args={[2.3, 1.6, 0.04]} />
@@ -242,7 +244,7 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
       <group position={[0.35, 1.5, 7]}>
         <mesh position={[0, 0, 0]} castShadow receiveShadow>
           <boxGeometry args={[0.15, 3.0, 13.4]} />
-          <meshStandardMaterial color="#e2e8f0" roughness={0.7} />
+          <meshStandardMaterial color={facadeColor} roughness={0.7} />
         </mesh>
         <mesh position={[0.09, -1.42, 0]}>
           <boxGeometry args={[0.04, 0.16, 13.4]} />
@@ -251,10 +253,8 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
         {/* West Windows */}
         {[2.5, 5.5, 8.8, 11.8].map((wz) => (
           <group key={wz} position={[0.01, 0.2, wz - 7]}>
-            <mesh>
-              <boxGeometry args={[0.2, 1.8, 2.4]} />
-              <meshStandardMaterial color="#0f172a" metalness={0.6} roughness={0.3} />
-            </mesh>
+            {[-1.16, 1.16].map(edge => <mesh key={edge} position={[0, 0, edge]}><boxGeometry args={[0.2, 1.8, 0.08]} /><meshStandardMaterial color="#94a3b8" /></mesh>)}
+            {[-0.86, 0.86].map(edge => <mesh key={edge} position={[0, edge, 0]}><boxGeometry args={[0.2, 0.08, 2.4]} /><meshStandardMaterial color="#94a3b8" /></mesh>)}
             <mesh position={[0, 0, 0]}>
               <boxGeometry args={[0.04, 1.6, 2.2]} />
               <meshPhysicalMaterial
@@ -362,4 +362,3 @@ export const HouseRooms3D: React.FC<HouseRooms3DProps> = ({
     </group>
   );
 };
-

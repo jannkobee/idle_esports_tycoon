@@ -4,7 +4,8 @@ export type AdPlacement =
   | 'scout_vip_pull'
   | 'sponsor_drone_drop'
   | 'tournament_clutch_buff'
-  | 'fast_track_training';
+  | 'fast_track_training'
+  | 'room_funding';
 
 export interface AdRewardResult {
   completed: boolean;

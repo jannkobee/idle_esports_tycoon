@@ -140,13 +140,13 @@ export function simulateSeries(power: number, rating: number, bestOf: 3 | 5, ran
   return { won: playerMaps > opponentMaps, playerMaps, opponentMaps };
 }
 
-export function playCircuitRound(event: CircuitEvent, roster: ProPlayer[], now: number, random = Math.random, lineup?: LineupAssignment): CircuitEvent | null {
+export function playCircuitRound(event: CircuitEvent, roster: ProPlayer[], now: number, random = Math.random, lineup?: LineupAssignment, coachingBonus = 0): CircuitEvent | null {
   const round = event.rounds[event.currentRound];
   if (event.status !== 'active' || !round || now < round.scheduledAt) return null;
   const power = lineupPower(roster, event.discipline, lineup);
   if (power <= 0) return null;
   const result = simulateDetailedSeries(power, round.opponent, round.bestOf, MAP_POOLS[event.discipline], round.bannedMap,
-    tacticBonus(roster, event.discipline, lineup, round.tactic ?? 'balanced'), random, event.discipline);
+    tacticBonus(roster, event.discipline, lineup, round.tactic ?? 'balanced') + coachingBonus, random, event.discipline);
   const rounds = event.rounds.map((item, index) => index === event.currentRound ? { ...item, result } : item);
   return { ...event, rounds, currentRound: result.won ? event.currentRound + 1 : event.currentRound,
     status: result.won ? event.currentRound === event.rounds.length - 1 ? 'won' : 'active' : 'eliminated' };

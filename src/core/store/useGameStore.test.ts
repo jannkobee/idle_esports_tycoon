@@ -16,6 +16,22 @@ describe('useGameStore', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('requires ownership before equipping wallpaper and saves purchased house finishes', () => {
+    const store = useGameStore.getState();
+    expect(store.setWallpaperStyle('cyberpunk')).toBe(false);
+    expect(useGameStore.getState().houseInterior.wallpaperStyle).toBe('default');
+    useGameStore.setState({ energyCans: 100 });
+    expect(useGameStore.getState().buyVipItem('wall_cyberpunk')).toBe(true);
+    expect(useGameStore.getState().energyCans).toBe(70);
+    expect(useGameStore.getState().equipCosmetic('wall_cyberpunk')).toBe(true);
+    expect(useGameStore.getState().houseInterior.wallpaperStyle).toBe('cyberpunk');
+    expect(useGameStore.getState().equipCosmetic('floor_marble')).toBe(false);
+    expect(useGameStore.getState().buyVipItem('floor_marble')).toBe(true);
+    expect(useGameStore.getState().equipCosmetic('floor_marble')).toBe(true);
+    expect(useGameStore.getState().houseInterior.flooringStyle).toBe('marble');
+    expect(useGameStore.getState().buyVipItem('floor_marble')).toBe(false);
+  });
+
   it('pays each daily sponsor milestone once and ignores duplicate completion', () => {
     for (let i = 0; i < 6; i++) {
       useGameStore.getState().requestAd('scout_vip_pull');
@@ -105,27 +121,32 @@ describe('useGameStore', () => {
     expect(state.playNextCircuitRound(999)).toBe(false);
   });
 
-  it('persists bracket choices and never awards a completed match twice', async () => {
+  it('lets staff set the match plan and never awards a completed match twice', async () => {
     useGameStore.setState({ cash: 1000 });
     const state = useGameStore.getState();
     expect(state.startCircuit('fps', 1000, 'fps_grassroots')).toBe(true);
     expect(useGameStore.getState().cash).toBe(900);
-    expect(state.setCircuitVeto('Astra')).toBe(true);
-    expect(state.setCircuitVeto('unknown')).toBe(false);
-    expect(state.setCircuitTactic('macro')).toBe(true);
     await useGameStore.persist.rehydrate();
     const event = useGameStore.getState().circuitEvent!;
-    expect(event.rounds[0]).toMatchObject({ bannedMap: 'Astra', tactic: 'macro' });
     expect(event.otherMatches).toHaveLength(4);
     expect(useGameStore.getState().playNextCircuitRound(1000)).toBe(true);
+    expect(useGameStore.getState().circuitEvent?.rounds[0].bannedMap).toBeTruthy();
+    expect(useGameStore.getState().circuitEvent?.rounds[0].tactic).toBe('balanced');
     const cash = useGameStore.getState().cash;
     expect(useGameStore.getState().playNextCircuitRound(1000)).toBe(false);
     expect(useGameStore.getState().cash).toBe(cash);
   });
 
+  it('ignores legacy manual lineup slots when the coach enters a tournament', () => {
+    useGameStore.setState({ cash: 1000, teamLineups: { fps: { awper: null, rifler_1: null, rifler_2: null, rifler_3: null, igl: null } } });
+    expect(useGameStore.getState().startCircuit('fps', 1000)).toBe(true);
+    expect(useGameStore.getState().playNextCircuitRound(1000)).toBe(true);
+  });
+
   it('converts only bench duplicates and spends points below individual potential', () => {
     const starter = useGameStore.getState().roster[0];
-    const duplicate = { ...starter, id: 'duplicate', role: 'sub' as const };
+    const duplicate = { ...starter, id: 'duplicate', role: 'sub' as const, contractMatchesRemaining: 0,
+      stats: { aim: 25, macro: 25, comms: 25, tiltResistance: 25 } };
     useGameStore.setState({ roster: [starter, duplicate], developmentPoints: 0, teamLineups: { fps: { rifler_1: starter.id } } });
     expect(useGameStore.getState().convertDuplicateCard(starter.id)).toBe(0);
     expect(useGameStore.getState().convertDuplicateCard(duplicate.id)).toBe(2);
@@ -136,6 +157,19 @@ describe('useGameStore', () => {
     expect(useGameStore.getState().developmentPoints).toBe(1);
     expect(useGameStore.getState().developPlayer(starter.id, 'mechanics')).toBe(true);
     expect(useGameStore.getState().developPlayer(starter.id, 'mechanics')).toBe(false);
+  });
+
+  it('hires generated staff, replaces a role, and persists the selected coach', async () => {
+    const market = useGameStore.getState().staffMarket;
+    const coaches = market.filter(person => person.kind === 'coach' && person.discipline === 'fps');
+    useGameStore.setState({ cash: 100000 });
+    expect(useGameStore.getState().hireStaff(coaches[0].id)).toBe(true);
+    expect(useGameStore.getState().hireStaff(coaches[0].id)).toBe(false);
+    expect(useGameStore.getState().hireStaff(coaches[1].id)).toBe(true);
+    expect(useGameStore.getState().hiredStaff.filter(person => person.discipline === 'fps')).toHaveLength(1);
+    expect(useGameStore.getState().hiredStaff.find(person => person.discipline === 'fps')?.id).toBe(coaches[1].id);
+    await useGameStore.persist.rehydrate();
+    expect(useGameStore.getState().hiredStaff.find(person => person.discipline === 'fps')?.id).toBe(coaches[1].id);
   });
 
   it('swaps cards between saved lineup slots and rejects cards from another discipline', async () => {
@@ -181,9 +215,40 @@ describe('useGameStore', () => {
   });
 
   it('upgrades facility when cash is sufficient', () => {
+    expect(useGameStore.getState().facilities.scrim_lab.isUnlocked).toBe(false);
+    expect(useGameStore.getState().unlockFacility('scrim_lab')).toBe(true);
     const success = useGameStore.getState().upgradeFacility('scrim_lab');
     expect(success).toBe(true);
     expect(useGameStore.getState().facilities.scrim_lab.level).toBe(2);
+  });
+
+  it('starts with every room locked and unlocks one with completed ad funding only', async () => {
+    expect(Object.values(useGameStore.getState().facilities).every(room => !room.isUnlocked)).toBe(true);
+    const onCompleted = (success: boolean) => { if (success) useGameStore.getState().fundFacilityWithAd('scrim_lab'); };
+    useGameStore.getState().requestAd('room_funding', onCompleted);
+    useGameStore.getState().closeAdModal(false);
+    expect(useGameStore.getState().roomFunding.scrim_lab).toBeUndefined();
+    for (let index = 0; index < 4; index++) {
+      useGameStore.getState().requestAd('room_funding', onCompleted);
+      useGameStore.getState().closeAdModal(true);
+    }
+    expect(useGameStore.getState().facilities.scrim_lab.isUnlocked).toBe(true);
+    expect(useGameStore.getState().facilities.scrim_lab.level).toBe(1);
+    await useGameStore.persist.rehydrate();
+    expect(useGameStore.getState().facilities.scrim_lab.isUnlocked).toBe(true);
+  });
+
+  it('preserves rooms unlocked in older saves while defaulting newly added rooms to locked', async () => {
+    const legacy = useGameStore.getState().facilities.scrim_lab;
+    localStorage.setItem('esports_dynasty_save_v1', JSON.stringify({ version: 1, state: {
+      facilities: { scrim_lab: { ...legacy, level: 4, isUnlocked: true } },
+      empire: { schedule: ['rest', 'rest', 'rest', 'rest', 'rest'] },
+    } }));
+    await useGameStore.persist.rehydrate();
+    const state = useGameStore.getState();
+    expect(state.facilities.scrim_lab).toMatchObject({ isUnlocked: true, level: 4 });
+    expect(state.facilities.cafeteria.isUnlocked).toBe(false);
+    expect(state.empire.schedule).toEqual(['scrim', 'vod', 'gym', 'outdoor', 'rest']);
   });
 
   it('upgrades the district and gives an outdoor treat run an Inspired recovery buff', () => {
