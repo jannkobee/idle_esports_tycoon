@@ -179,6 +179,7 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
   },
 
   // --- Strategy / Analyst Room ---
+  { id: 'studio_side_table', kind: 'table', area: 'streaming_pod', rect: { x: 8.275, y: 4.675, w: 0.75, d: 0.55 }, minLevel: 1, obstacle: true },
   {
     id: "analyst_screen",
     kind: "wallScreen",
@@ -274,7 +275,7 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
     id: "merch_rack_1",
     kind: "rack",
     area: "merch_store",
-    rect: { x: 11.3, y: 8.0, w: 1.8, d: 0.8 },
+    rect: { x: 14.8, y: 8.15, w: 1.6, d: 0.5 },
     minLevel: 1,
     obstacle: true,
   },
@@ -282,7 +283,7 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
     id: "merch_rack_2",
     kind: "rack",
     area: "merch_store",
-    rect: { x: 11.3, y: 9.8, w: 1.8, d: 0.8 },
+    rect: { x: 14.8, y: 9.6, w: 1.6, d: 0.5 },
     minLevel: 3,
     obstacle: true,
   },
@@ -290,7 +291,7 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
     id: "merch_rack_3",
     kind: "rack",
     area: "merch_store",
-    rect: { x: 11.3, y: 11.6, w: 1.8, d: 0.8 },
+    rect: { x: 14.8, y: 11.05, w: 1.6, d: 0.5 },
     minLevel: 6,
     obstacle: true,
   },
@@ -298,12 +299,14 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
     id: "merch_counter",
     kind: "counter",
     area: "merch_store",
-    rect: { x: 11.8, y: 12.6, w: 1.5, d: 0.7 },
+    rect: { x: 14.85, y: 12.275, w: 1.5, d: 0.65 },
     minLevel: 1,
     obstacle: true,
   },
 
   // --- Hall Break Items ---
+  { id: 'merch_apparel_table', kind: 'table', area: 'merch_store', rect: { x: 12.475, y: 9.375, w: 1.45, d: 1.05 }, minLevel: 1, obstacle: true },
+  { id: 'merch_sneakers', kind: 'counter', area: 'merch_store', rect: { x: 12.525, y: 11.425, w: 0.55, d: 0.55 }, minLevel: 1, obstacle: true },
   {
     id: "hall_cooler",
     kind: "cooler",
@@ -317,7 +320,7 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
     id: "hall_vending",
     kind: "vending",
     area: "hall",
-    rect: { x: 13.15, y: 6.3, w: 0.45, d: 0.85 },
+    rect: { x: 12.925, y: 6.275, w: 0.45, d: 0.85 },
     minLevel: 1,
     obstacle: true,
     stationId: "hall_spot_vending",
@@ -325,6 +328,9 @@ export const HOUSE_FURNITURE: FurnitureItem[] = [
 ];
 
 export const HOUSE_STATIONS: HouseStation[] = [
+  { id: 'merch_browse', activity: 'break', area: 'merch_store',
+    seat: { x: 14.35, y: 9.85 }, approach: { x: 14.35, y: 10.55 },
+    facing: 'se', pose: 'stand', minLevel: 1, label: 'Browse Team Jerseys' },
   // --- Scrim Lab (6 Practice Stations) ---
   ...[0, 1].flatMap((row) =>
     [0, 1, 2].map((col) => {
@@ -344,6 +350,25 @@ export const HOUSE_STATIONS: HouseStation[] = [
       };
     }),
   ),
+
+  // --- Multi-Title Arena Wing (unlocks at Scrim Lab level 6) ---
+  // These dedicated stations keep large rosters active and visibly support
+  // FPS, MOBA, battle royale, and fighting-game specialists.
+  ...[0, 1, 2].flatMap(row => [0, 1, 2, 3].map(col => {
+    const index = row * 4 + col;
+    const titles = ['FPS', 'MOBA', 'BR', 'FIGHT'];
+    return {
+      id: `arena_station_${index}`,
+      activity: 'practice' as const,
+      area: 'scrim_lab' as HouseArea,
+      seat: { x: 15.35 + col * 1.38, y: 1.45 + row * 1.55 },
+      approach: { x: 15.35 + col * 1.38, y: 2.05 + row * 1.55 },
+      facing: 'ne' as const,
+      pose: 'sit' as const,
+      minLevel: 6,
+      label: `${titles[col]} Arena Rig ${row + 1}`,
+    };
+  })),
 
   // --- Stream Studio (3 Stream Pods + 2 Sofa Break Spots) ---
   ...[0, 1, 2].map((k) => {
@@ -569,13 +594,39 @@ export const HOUSE_STATIONS: HouseStation[] = [
     id: 'cafeteria_meal_table',
     activity: 'break',
     area: 'cafeteria',
-    seat: { x: -3.0, y: 11.6 },
-    approach: { x: -2.7, y: 12.1 },
+    seat: { x: -3.7, y: 11.6 },
+    approach: { x: -3.7, y: 12.65 },
     facing: 'nw',
     pose: 'sit',
     minLevel: 1,
     prop: 'snack',
+    partnerId: 'cafeteria_table_partner',
     label: 'Team Cafeteria Meal',
+  },
+  {
+    id: 'cafeteria_table_partner',
+    activity: 'break',
+    area: 'cafeteria',
+    seat: { x: -2.3, y: 11.6 },
+    approach: { x: -2.1, y: 12.45 },
+    facing: 'nw',
+    pose: 'sit',
+    minLevel: 1,
+    prop: 'cup',
+    partnerId: 'cafeteria_meal_table',
+    label: 'Cafeteria Table Chat',
+  },
+  {
+    id: 'cafeteria_booth_seat',
+    activity: 'break',
+    area: 'cafeteria',
+    seat: { x: -4.65, y: 11.75 },
+    approach: { x: -4.65, y: 10.5 },
+    facing: 'se',
+    pose: 'sit',
+    minLevel: 1,
+    prop: 'snack',
+    label: 'Cafeteria Booth Meal',
   },
   {
     id: "patio_watch_tv",
@@ -584,9 +635,9 @@ export const HOUSE_STATIONS: HouseStation[] = [
     seat: { x: 2.2, y: 15.1 },
     approach: { x: 2.8, y: 14.6 },
     facing: "nw",
-    pose: "sit",
+    pose: "stand",
     minLevel: 1,
-    label: "Patio TV Match Broadcast",
+    label: "Entry Garden Fresh Air",
   },
   {
     id: "patio_sofa_chill",
@@ -595,9 +646,9 @@ export const HOUSE_STATIONS: HouseStation[] = [
     seat: { x: 3.3, y: 15.1 },
     approach: { x: 3.3, y: 14.6 },
     facing: "sw",
-    pose: "lounge",
+    pose: "sit",
     minLevel: 1,
-    label: "Patio Lounge Sofa",
+    label: "Entry Garden Bench",
   },
   {
     id: "patio_basketball_hoop",
@@ -628,9 +679,9 @@ export const HOUSE_STATIONS: HouseStation[] = [
     seat: { x: 5.5, y: 15.2 },
     approach: { x: 5.5, y: 14.6 },
     facing: "se",
-    pose: "sit",
+    pose: "stand",
     minLevel: 1,
-    label: "Garden Planter Bench",
+    label: "Garden Walk",
   },
   {
     id: "tournament_car_seat",
@@ -639,9 +690,9 @@ export const HOUSE_STATIONS: HouseStation[] = [
     seat: { x: 13.2, y: 15.6 },
     approach: { x: 12.6, y: 14.8 },
     facing: "se",
-    pose: "sit",
+    pose: "stand",
     minLevel: 1,
-    label: "Team Sports Car",
+    label: "Front Promenade Break",
   },
   {
     id: 'dynasty_mart_inside', activity: 'break', area: 'hall',

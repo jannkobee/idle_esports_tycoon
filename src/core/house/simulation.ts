@@ -64,6 +64,12 @@ export interface HouseSimState {
   rng: Rng;
 }
 
+export function houseAgentCapacity(facilities: Record<FacilityId, { isUnlocked: boolean; level: number }>): number {
+  const scrimLevel = facilities.scrim_lab?.isUnlocked ? facilities.scrim_lab.level : 0;
+  // The villa hosts eight pros. Level 6 opens a 12-rig multi-title wing.
+  return scrimLevel >= 6 ? 18 : 8;
+}
+
 const REVIEW_CHATTER = [
   "Watch that flank!",
   "Reset for objective.",
@@ -142,6 +148,14 @@ export function findBestStation(
     const stationId = preferredSport === 'basketball' ? 'patio_basketball_hoop' : preferredSport === 'football' ? 'outside_football_drills' : '';
     const sportStation = candidates.find(station => station.id === stationId);
     if (sportStation) return sportStation;
+  }
+
+  // Cafeteria dining preference when unlocked
+  if (activity === 'break' && unlockedFacilities.has('cafeteria')) {
+    const cafeStations = candidates.filter(station => station.area === 'cafeteria');
+    if (cafeStations.length > 0 && Math.abs(agent.seed) % 2 === 0) {
+      return cafeStations[Math.abs(agent.seed) % cafeStations.length];
+    }
   }
 
   // 1. If break activity and partner is chatting:
@@ -256,7 +270,7 @@ export function assignAgentActivity(
     context.facilityLevels,
     activity === 'break' && rng.next() < 0.45 ? agent.sportsPreference : undefined,
     context.districtTier ?? 1,
-    activity === 'break' && rng.next() < 0.35,
+    activity === 'break' && agent.energy >= 55 && rng.next() < 0.35,
   );
 
   if (!station) {
@@ -295,6 +309,12 @@ export function assignAgentActivity(
   );
 
   agent.path = route;
+  if (!route.length) {
+    agent.targetStationId = null;
+    agent.mode = "waiting";
+    agent.waitTimer = 2;
+    return;
+  }
   agent.mode = "walking";
   agent.waitTimer = 0;
 }
@@ -322,7 +342,7 @@ export function createHouseSim(
       if (b.role === "starter" && a.role !== "starter") return 1;
       return 0;
     })
-    .slice(0, 8); // Holds up to 8 players
+    .slice(0, houseAgentCapacity(facilities));
 
   const agents: SimAgent[] = [];
   const occupied = new Set<string>();
@@ -384,7 +404,7 @@ export function createHouseSim(
     agents,
     unlockedFacilities: unlocked,
     facilityLevels: levels,
-    pendingGains: { hype: 0, stats: {} },
+    pendingGains: { hype: 0, stats: {}, inspiredPlayers: [] },
     simTime: 0,
     districtTier,
     rng,
@@ -420,7 +440,7 @@ export function syncHouseSim(
       if (b.role === "starter" && a.role !== "starter") return 1;
       return 0;
     })
-    .slice(0, 8);
+    .slice(0, houseAgentCapacity(facilities));
 
   const activeMap = new Map(activePlayers.map((p) => [p.id, p]));
 
@@ -608,9 +628,13 @@ export function stepHouseSim(
             agent.mode = "working";
             agent.timer = pickActivityDuration(agent.activity, sim.rng);
 
-            if (station.id === 'dynasty_mart_inside' || station.id === 'boba_cafe_inside') {
+            if (station.id === 'dynasty_mart_inside' || station.id === 'boba_cafe_inside' || station.area === 'cafeteria') {
               agent.energizedTimer = Math.max(agent.energizedTimer, 180);
-              agent.speechBubble = { text: station.id === 'boba_cafe_inside' ? 'Boba run!' : 'Snack break!', expiresAt: sim.simTime + 4 };
+              agent.speechBubble = { text: station.area === 'cafeteria' ? "Chef's meal!" : station.id === 'boba_cafe_inside' ? 'Boba run!' : 'Snack break!', expiresAt: sim.simTime + 4 };
+            }
+            if (['dynasty_mart_inside', 'boba_cafe_inside', 'outside_garden_bench', 'patio_sofa_chill', 'patio_basketball_hoop', 'outside_football_drills', 'cafeteria_meal_table', 'cafeteria_table_partner', 'cafeteria_booth_seat'].includes(station.id)) {
+              const inspired = sim.pendingGains.inspiredPlayers ?? (sim.pendingGains.inspiredPlayers = []);
+              if (!inspired.includes(agent.id)) inspired.push(agent.id);
             }
 
             if (agent.activity !== "break") {
@@ -827,11 +851,13 @@ export function takeGains(sim: HouseSimState): ActivityGains {
   const gains: ActivityGains = {
     hype: sim.pendingGains.hype,
     stats: { ...sim.pendingGains.stats },
+    inspiredPlayers: [...(sim.pendingGains.inspiredPlayers ?? [])],
   };
 
   sim.pendingGains = {
     hype: 0,
     stats: {},
+    inspiredPlayers: [],
   };
 
   return gains;

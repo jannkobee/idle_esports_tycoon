@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { Group } from 'three';
@@ -6,6 +6,8 @@ import { ProPlayer } from '../../../core/types/player.types';
 import { SimAgent } from '../../../core/house/simulation';
 import { Crosshair, Radio, Dumbbell, BookOpen, Coffee } from 'lucide-react';
 import type { OrgBranding } from '../../../core/empire/EmpireService';
+import { onCampusFloor } from '../../../core/house/campusLayout';
+import { useGameStore } from '../../../core/store/useGameStore';
 
 interface HouseCharacters3DProps {
   agents: SimAgent[];
@@ -57,18 +59,27 @@ function CharacterModel({
   paused: boolean;
   jerseyColors: OrgBranding;
 }) {
+  const [hovered, setHovered] = useState(false);
   const rootRef = useRef<Group>(null);
   const leftLegRef = useRef<Group>(null);
   const rightLegRef = useRef<Group>(null);
   const leftArmRef = useRef<Group>(null);
   const rightArmRef = useRef<Group>(null);
   const headRef = useRef<Group>(null);
+  const sportBallRef = useRef<Group>(null);
+  const facilities = useGameStore(state => state.facilities);
+  const { unlocked, levels } = useMemo(() => ({
+    unlocked: new Set(Object.values(facilities).filter(f => f.isUnlocked).map(f => f.id)),
+    levels: Object.fromEntries(Object.values(facilities).map(f => [f.id, f.level])),
+  }), [facilities]);
+  const campusFloor = onCampusFloor({ x: agent.x, y: agent.y }, unlocked, levels);
 
   const idx = player.portraitIndex % 6;
   const skin = SKIN_COLORS[idx];
   const hair = HAIR_COLORS[idx];
 
   const targetRotation =
+    agent.mode === 'working' && /^(scrim_station|arena_station|stream_station|analyst_station_near)/.test(agent.stationId ?? '') ? Math.PI :
     agent.facing === 'ne'
       ? Math.PI * 0.75
       : agent.facing === 'nw'
@@ -84,6 +95,8 @@ function CharacterModel({
       (targetRotation - rootRef.current.rotation.y) * 0.25;
 
     const t = clock.elapsedTime * 8 + idx;
+    rootRef.current.position.x = 0;
+    if (sportBallRef.current) sportBallRef.current.visible = false;
 
     if (agent.mode === 'walking' && !paused) {
       rootRef.current.position.y = Math.abs(Math.sin(t * 1.5)) * 0.05;
@@ -96,6 +109,27 @@ function CharacterModel({
       if (leftArmRef.current && rightArmRef.current) {
         leftArmRef.current.rotation.x = -Math.sin(t) * 0.5;
         rightArmRef.current.rotation.x = Math.sin(t) * 0.5;
+      }
+      return;
+    }
+
+    if (agent.stationId === 'outside_football_drills' && agent.mode === 'working' && !paused) {
+      const stride = Math.sin(t * 1.7);
+      rootRef.current.position.x = stride * 0.22;
+      rootRef.current.position.y = 0.05 + Math.abs(Math.sin(t * 3.4)) * 0.05;
+      rootRef.current.rotation.x = 0.08;
+      if (leftLegRef.current && rightLegRef.current) {
+        leftLegRef.current.rotation.x = stride * 0.95;
+        rightLegRef.current.rotation.x = -stride * 0.95;
+      }
+      if (leftArmRef.current && rightArmRef.current) {
+        leftArmRef.current.rotation.x = -stride * 0.7;
+        rightArmRef.current.rotation.x = stride * 0.7;
+      }
+      if (sportBallRef.current) {
+        sportBallRef.current.visible = true;
+        sportBallRef.current.position.set(0.16 + stride * 0.28, 0.13, 0.42);
+        sportBallRef.current.rotation.set(t * 4, t * 5, 0);
       }
       return;
     }
@@ -184,16 +218,21 @@ function CharacterModel({
     }
 
     if (agent.pose === 'hoops') {
-      rootRef.current.position.y = Math.abs(Math.sin(t * 1.6)) * 0.08;
+      const phase = (Math.sin(t * 1.45) + 1) * 0.5;
+      rootRef.current.position.y = Math.abs(Math.sin(t * 1.45)) * 0.08;
       rootRef.current.rotation.x = 0;
       if (leftLegRef.current && rightLegRef.current) {
-        leftLegRef.current.rotation.x = Math.sin(t * 1.6) * 0.15;
-        rightLegRef.current.rotation.x = -Math.sin(t * 1.6) * 0.15;
+        leftLegRef.current.rotation.x = Math.sin(t * 1.45) * 0.32;
+        rightLegRef.current.rotation.x = -Math.sin(t * 1.45) * 0.32;
       }
       if (leftArmRef.current && rightArmRef.current) {
-        const shot = Math.sin(t * 1.6);
-        rightArmRef.current.rotation.x = -Math.PI * 0.65 - shot * 0.35;
-        leftArmRef.current.rotation.x = -Math.PI * 0.4 - shot * 0.2;
+        rightArmRef.current.rotation.x = -0.6 - phase * 1.45;
+        leftArmRef.current.rotation.x = -0.35 - phase * 0.75;
+      }
+      if (sportBallRef.current) {
+        sportBallRef.current.visible = true;
+        sportBallRef.current.position.set(0.18, 0.12 + phase * 0.76, 0.22);
+        sportBallRef.current.rotation.set(t * 5, t * 4, 0);
       }
       return;
     }
@@ -212,12 +251,13 @@ function CharacterModel({
       headRef.current.rotation.x = 0;
       headRef.current.rotation.y = 0;
     }
+    if (sportBallRef.current) sportBallRef.current.visible = false;
   });
 
   const ActivityIcon = ACTIVITY_ICONS[agent.activity] ?? Coffee;
 
   return (
-    <group position={[agent.x, agent.y >= 16 ? -0.4 : agent.y >= 14 ? -0.35 : agent.x < 0 || agent.x > 14 ? -0.45 : 0, agent.y]}>
+    <group position={[agent.x, campusFloor ? 0 : agent.y < 0 ? -0.45 : agent.y >= 16 ? -0.4 : agent.y >= 14 ? -0.35 : agent.x < 0 || agent.x > 14 ? -0.45 : 0, agent.y]}>
       {selected && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.35, 0.42, 24]} />
@@ -225,34 +265,43 @@ function CharacterModel({
         </mesh>
       )}
 
-      <Html
-        position={[0, 1.48, 0]}
-        center
-        distanceFactor={12}
-        style={{ pointerEvents: 'none' }}
-      >
-        <div className="flex flex-col items-center gap-1 select-none pointer-events-auto cursor-pointer" onClick={onSelect}>
-          {agent.speechBubble && (
-            <div className="bg-slate-900/90 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-cyan-500/50 shadow-lg whitespace-nowrap animate-bounce">
-              💬 {agent.speechBubble.text}
-            </div>
-          )}
+      {(selected || hovered || agent.speechBubble) && (
+        <Html
+          position={[0, 1.48, 0]}
+          center
+          distanceFactor={12}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="flex flex-col items-center gap-1 select-none pointer-events-auto cursor-pointer" onClick={onSelect}>
+            {agent.speechBubble && (
+              <div className="bg-slate-900/90 text-cyan-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-cyan-500/50 shadow-lg whitespace-nowrap animate-bounce">
+                💬 {agent.speechBubble.text}
+              </div>
+            )}
 
-          <div
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full shadow-md text-[10px] font-extrabold tracking-wide border transition-all ${
-              selected
-                ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110 shadow-amber-500/30'
-                : 'bg-slate-950/80 text-slate-200 border-slate-700/80'
-            }`}
-          >
-            <ActivityIcon size={11} className={selected ? 'text-slate-950' : 'text-cyan-400'} />
-            <span>{player.handle}</span>
+            {(selected || hovered) && (
+              <div
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full shadow-md text-[10px] font-extrabold tracking-wide border transition-all ${
+                  selected
+                    ? 'bg-amber-500 text-slate-950 border-amber-300 scale-110 shadow-amber-500/30'
+                    : 'bg-slate-950/80 text-slate-200 border-slate-700/80'
+                }`}
+              >
+                <ActivityIcon size={11} className={selected ? 'text-slate-950' : 'text-cyan-400'} />
+                <span>{player.handle}</span>
+              </div>
+            )}
           </div>
-        </div>
-      </Html>
+        </Html>
+      )}
 
       <group
         ref={rootRef}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          setHovered(true);
+        }}
+        onPointerOut={() => setHovered(false)}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
@@ -419,12 +468,6 @@ function CharacterModel({
             <sphereGeometry args={[0.045, 8, 8]} />
             <meshStandardMaterial color={skin} roughness={0.8} />
           </mesh>
-          {agent.pose === 'hoops' && (
-            <mesh position={[0, -0.38, 0.08]} castShadow>
-              <sphereGeometry args={[0.11, 14, 12]} />
-              <meshStandardMaterial color="#ea580c" roughness={0.75} />
-            </mesh>
-          )}
           {agent.pose === 'tv' && (
             <mesh position={[0, -0.35, 0.06]}>
               <cylinderGeometry args={[0.03, 0.03, 0.09, 8]} />
@@ -454,10 +497,10 @@ function CharacterModel({
             <meshStandardMaterial color="#f8fafc" roughness={0.4} />
           </mesh>
         </group>
-        {agent.stationId === 'outside_football_drills' && agent.mode === 'working' && <mesh position={[0.25, 0.13, 0.34]} castShadow>
-          <sphereGeometry args={[0.12, 12, 10]} />
-          <meshStandardMaterial color="#f8fafc" roughness={0.75} />
-        </mesh>}
+        <group ref={sportBallRef} visible={false}>
+          <mesh castShadow><sphereGeometry args={[0.12, 14, 12]} /><meshStandardMaterial color={agent.stationId === 'patio_basketball_hoop' ? '#ea580c' : '#f8fafc'} roughness={0.7} /></mesh>
+          {agent.stationId === 'outside_football_drills' && <mesh rotation={[0.4, 0.2, 0]}><torusGeometry args={[0.121, 0.008, 6, 8]} /><meshBasicMaterial color="#0f172a" /></mesh>}
+        </group>
       </group>
     </group>
   );

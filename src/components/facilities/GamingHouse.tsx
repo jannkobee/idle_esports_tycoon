@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getEquipmentModel, getEquipmentTier, nextEquipmentTier } from '../../core/facilities/equipmentProgression';
 import {
   ArrowUp,
   Flame,
@@ -24,6 +25,7 @@ import {
   Tv,
   Check,
   Building2,
+  Layers,
 } from 'lucide-react';
 import { useGameStore, WallpaperStyle } from '../../core/store/useGameStore';
 import { useHouseSimulationStore } from '../../core/house/useHouseSimulation';
@@ -79,6 +81,9 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
     houseInterior,
     setWallpaperStyle,
     upgradeLoungeTv,
+    claimHqPulse,
+    lastHqPulseAt,
+    hqPulseStreak,
   } = useGameStore();
 
   const agents = useHouseSimulationStore((s) => s.agents);
@@ -90,14 +95,23 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
   const [showRoomDrawer, setShowRoomDrawer] = useState(false);
   const [zoomStep, setZoomStep] = useState(0);
   const [resetView, setResetView] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [showRoof, setShowRoof] = useState(false);
+  const [activeFloor, setActiveFloor] = useState<1 | 2>(1);
+  const paused = useHouseSimulationStore(s => s.paused);
+  const setPaused = useHouseSimulationStore(s => s.setPaused);
   const [notice, setNotice] = useState('');
+  const [clock, setClock] = useState(() => Date.now());
 
   const facility = facilities[roomId];
+  const equipment = getEquipmentTier(facility.level);
+  const nextEquipment = nextEquipmentTier(facility.level);
   const roomMeta = HOUSE_ROOMS.find((r) => r.id === roomId)!;
   const activeRoster = roster.filter((p) => p.role !== 'inactive');
   const selectedPlayer = roster.find((p) => p.id === selectedPlayerId);
   const selectedAgent = agents.find((a) => a.id === selectedPlayerId);
+  const houseCapacity = (facilities.scrim_lab?.level ?? 0) >= 6 ? 18 : 8;
+  const pulseReady = clock - lastHqPulseAt >= 90_000;
+  const pulseSeconds = Math.max(0, Math.ceil((90_000 - (clock - lastHqPulseAt)) / 1000));
 
   const cost = facility.isUnlocked
     ? FormulaService.calculateUpgradeCost(facility.baseCost, facility.level, facility.costMultiplier)
@@ -117,6 +131,11 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
     return () => clearTimeout(timer);
   }, [notice]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const selectRoom = (id: FacilityId) => {
     setRoomId(id);
     setInspectorMode('room');
@@ -130,7 +149,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
     if (success) {
       setNotice(
         facility.isUnlocked
-          ? `🎉 ${facility.name} upgraded to Level ${facility.level + 1}!`
+          ? `🎉 ${facility.name} upgraded to Level ${facility.level + 1}!${getEquipmentTier(facility.level + 1).level !== equipment.level ? ` New model: ${getEquipmentModel(roomId, facility.level + 1)}` : ''}`
           : `🚀 ${facility.name} is now open for business!`
       );
     }
@@ -144,9 +163,9 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
   });
 
   return (
-    <div className="relative w-full h-[calc(100vh-8.5rem)] min-h-[580px] flex flex-col bg-slate-950 overflow-hidden select-none">
+    <div className="relative w-full h-[calc(100dvh-10rem)] min-h-[640px] flex flex-col bg-slate-950 overflow-hidden select-none">
       {/* 3D React Three Fiber Headquarters Scene (Main Focal Point) */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-x-0 top-[156px] bottom-[180px] z-0">
         <HouseCanvas3D
           facilities={facilities}
           roomId={roomId}
@@ -156,18 +175,20 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
           paused={paused}
           zoomStep={zoomStep}
           resetView={resetView}
+          showRoof={showRoof}
           onSelectRoom={selectRoom}
           onSelectPlayer={(id) => {
             setSelectedPlayerId(id);
           }}
           empire={empire}
+          activeFloor={activeFloor}
         />
       </div>
 
       {/* FLOATING TOP-BAR HUD (Status Caption & Camera Controls) */}
-      <div className="relative z-10 w-full px-3 pt-2.5 flex items-start justify-between pointer-events-none">
+      <div className="relative z-10 w-full px-3 pt-2.5 grid grid-cols-2 gap-2 pointer-events-none">
         {/* Organization HQ Status Badge */}
-        <div className="pointer-events-auto bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-2xl px-3 py-1.5 shadow-xl flex flex-col gap-0.5">
+        <div className="col-span-2 pointer-events-auto bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-2xl px-3 py-1.5 shadow-xl flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-black tracking-widest text-slate-200 uppercase">
@@ -175,12 +196,50 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
             </span>
           </div>
           <div className="text-[9px] font-medium text-slate-400">
-            {unlockedRoomsCount}/{Object.keys(facilities).length} Rooms Open · {activeRoster.length} Pros Active
+            {unlockedRoomsCount}/{Object.keys(facilities).length} Rooms Open · {activeRoster.length}/{houseCapacity} HQ Pros
           </div>
+          <button
+            onClick={() => { const reward = claimHqPulse(); if (reward) setNotice(`HQ Pulse claimed: ${formatCash(reward)} + Energy Can${(hqPulseStreak + 1) % 5 === 0 ? 's ×3' : ''}`); }}
+            disabled={!pulseReady}
+            className={`mt-1 rounded-lg px-2 py-1 text-[9px] font-black transition-all ${pulseReady ? 'bg-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/25 animate-pulse' : 'bg-slate-800 text-slate-500'}`}
+          >
+            {pulseReady ? 'CLAIM HQ PULSE' : `NEXT HQ PULSE · ${pulseSeconds}s`}
+          </button>
+        </div>
+
+        {/* Floor Switcher: 1F Ground vs 2F Upper Dorms & Comfort Rooms */}
+        <div className="pointer-events-auto flex items-center bg-slate-950/85 backdrop-blur-md border border-slate-800/90 rounded-2xl p-1 shadow-2xl">
+          <button
+            onClick={() => setActiveFloor(1)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black tracking-wide transition-all ${
+              activeFloor === 1
+                ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+            title="Switch to 1F Ground Training Floor"
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>1F</span>
+          </button>
+          <button
+            onClick={() => {
+              setActiveFloor(2);
+              setShowRoof(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-black tracking-wide transition-all ${
+              activeFloor === 2
+                ? 'bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white shadow-lg shadow-purple-500/25'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+            title="Switch to 2F Penthouse Dorms, Comfort Rooms & Balcony"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>2F</span>
+          </button>
         </div>
 
         {/* Camera & Simulation Controls */}
-        <div className="pointer-events-auto flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-1 shadow-xl">
+        <div className="pointer-events-auto flex items-center justify-between gap-0.5 bg-slate-950/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-1 shadow-xl">
           <button
             onClick={() => setZoomStep((z) => z + 1)}
             className="w-7 h-7 rounded-xl flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 active:scale-95 transition-all"
@@ -205,8 +264,11 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
           >
             <RotateCcw size={13} />
           </button>
+          <button onClick={() => setShowRoof(value => !value)} className={`w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 transition-all ${showRoof ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/40' : 'text-slate-300 hover:text-white hover:bg-slate-800'}`} title={showRoof ? 'Hide Roof' : 'Show Roof'} aria-label={showRoof ? 'Hide Roof' : 'Show Roof'}>
+            <Layers size={14} />
+          </button>
           <button
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => setPaused(!paused)}
             className={`w-7 h-7 rounded-xl flex items-center justify-center active:scale-95 transition-all ${
               paused
                 ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
@@ -531,7 +593,7 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
                 </div>
                 <p className="text-[10px] text-slate-400 mt-0.5">
                   {facility.isUnlocked
-                    ? `${roomPros.length} Pros inside · Automatic revenue generation`
+                    ? `${roomPros.length} Pros inside · Automatic revenue generation${roomId === 'scrim_lab' ? ` · ${facility.level >= 6 ? 'Arena wing open: 18 rig capacity' : 'Arena wing unlocks at Level 6'}` : ''}`
                     : `Requires ${facility.requiredHype} Organization Hype to open`}
                 </p>
               </div>
@@ -544,6 +606,11 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
                 </span>
               </div>
             </div>
+
+            {facility.isUnlocked && <div className="text-[10px] leading-tight" data-testid="equipment-tier">
+              <p className="font-bold" style={{ color: equipment.color }}>{equipment.name} · {getEquipmentModel(roomId, facility.level)}</p>
+              <p className="mt-1 text-slate-400">{nextEquipment ? `Next model at Lv ${nextEquipment.level}: ${getEquipmentModel(roomId, nextEquipment.level)}` : 'Maximum visual tier · Income upgrades continue'}</p>
+            </div>}
 
             {/* Upgrade & Unlock Action Row */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">

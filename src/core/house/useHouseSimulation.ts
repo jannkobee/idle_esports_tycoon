@@ -13,6 +13,8 @@ import {
 } from './simulation';
 
 interface HouseSimulationStore {
+  paused: boolean;
+  setPaused: (paused: boolean) => void;
   sim: HouseSimState | null;
   agents: SimAgent[];
   selectedPlayerId: string | null;
@@ -23,6 +25,8 @@ interface HouseSimulationStore {
 }
 
 export const useHouseSimulationStore = create<HouseSimulationStore>((set, get) => ({
+  paused: false,
+  setPaused: (paused) => set({ paused }),
   sim: null,
   agents: [],
   selectedPlayerId: null,
@@ -50,6 +54,7 @@ export const useHouseSimulationStore = create<HouseSimulationStore>((set, get) =
   },
 
   step: (dt: number, roster: ProPlayer[]) => {
+    if (get().paused) return;
     const { sim } = get();
     if (!sim) return;
     stepHouseSim(sim, dt, roster);
@@ -109,7 +114,7 @@ export function useHouseSimulationLoop() {
       lastTimeRef.current = timestamp;
 
       // Throttle if tab hidden or excessive delta
-      if (!document.hidden && elapsedMs > 0) {
+      if (!document.hidden && !useHouseSimulationStore.getState().paused && elapsedMs > 0) {
         const dt = Math.min(elapsedMs / 1000, 0.1); // clamp to 100ms max
 
         step(dt, roster);

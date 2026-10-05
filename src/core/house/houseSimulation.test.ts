@@ -9,11 +9,12 @@ import {
   calculateEnergyEfficiency,
   calculateRoomMultiplier,
 } from './activities';
-import { FRONT_DOOR_SPAWN, HOUSE_STATIONS } from './houseGeometry';
+import { FRONT_DOOR_SPAWN, HOUSE_STATIONS, isStationAvailable } from './houseGeometry';
 import { findAStarPath, getNavGrid, NavContext } from './navigation';
 import { createRng } from './rng';
 import {
   createHouseSim,
+  houseAgentCapacity,
   findBestStation,
   getOccupiedStationIds,
   pickNextActivity,
@@ -21,6 +22,43 @@ import {
   syncHouseSim,
   takeGains,
 } from './simulation';
+
+describe('district shop visits', () => {
+  it('routes through the crosswalk into Mart and gates the boba cafe at tier two', () => {
+    const unlocked = new Set<FacilityId>(['scrim_lab']);
+    const levels = { scrim_lab: 1 } as Record<FacilityId, number>;
+    const grid = getNavGrid({ unlockedFacilities: unlocked, facilityLevels: levels });
+    const mart = HOUSE_STATIONS.find(station => station.id === 'dynasty_mart_inside')!;
+    const cafe = HOUSE_STATIONS.find(station => station.id === 'boba_cafe_inside')!;
+    expect(isStationAvailable(mart, unlocked, levels, 1)).toBe(true);
+    expect(isStationAvailable(cafe, unlocked, levels, 1)).toBe(false);
+    expect(isStationAvailable(cafe, unlocked, levels, 2)).toBe(true);
+    const player = useGameStore.getState().roster[0];
+    const agent = createHouseSim([player], TEST_FACILITIES).agents[0];
+    expect(findBestStation(agent, 'break', [], unlocked, levels, undefined, 1, true)?.id).toBe('dynasty_mart_inside');
+    expect(['dynasty_mart_inside', 'boba_cafe_inside']).toContain(findBestStation(agent, 'break', [], unlocked, levels, undefined, 2, true)?.id);
+    expect(grid.isPointWalkable(-2, 22)).toBe(true);
+    expect(grid.isPointWalkable(3, 22)).toBe(false);
+    for (const shop of [mart, cafe]) {
+      const path = findAStarPath(grid, FRONT_DOOR_SPAWN, shop.approach);
+      expect(path.length).toBeGreaterThan(2);
+      expect(Math.abs(path.at(-1)!.x - shop.approach.x)).toBeLessThan(0.13);
+      for (let index = 1; index < path.length; index++) expect(grid.hasLineOfSight(path[index - 1], path[index])).toBe(true);
+    }
+  });
+});
+
+describe('scalable multi-title arena', () => {
+  it('expands the active HQ capacity and exposes twelve extra rigs at lab level six', () => {
+    const upgraded = { ...TEST_FACILITIES, scrim_lab: { ...TEST_FACILITIES.scrim_lab, isUnlocked: true, level: 6 } };
+    expect(houseAgentCapacity(TEST_FACILITIES)).toBe(8);
+    expect(houseAgentCapacity(upgraded)).toBe(18);
+    const unlocked = new Set<FacilityId>(['scrim_lab']);
+    const arenaStations = HOUSE_STATIONS.filter(station => station.id.startsWith('arena_station_'));
+    expect(arenaStations).toHaveLength(12);
+    expect(arenaStations.every(station => isStationAvailable(station, unlocked, { scrim_lab: 6 } as Record<FacilityId, number>))).toBe(true);
+  });
+});
 
 const TEST_FACILITIES: Record<FacilityId, Facility> = {
   scrim_lab: {
@@ -193,10 +231,11 @@ describe('House Simulation Engine', () => {
         expect(path.length).toBeGreaterThan(2);
         expect(path.at(-1)?.x).toBeCloseTo(station.approach.x, 0);
       }
-      expect(getNavGrid({ unlockedFacilities: unlocked, facilityLevels: sim.facilityLevels }).isPointWalkable(-2.7, 12.1)).toBe(false);
+      const mealApproach = HOUSE_STATIONS.find(station => station.id === 'cafeteria_meal_table')!.approach;
+      expect(getNavGrid({ unlockedFacilities: unlocked, facilityLevels: sim.facilityLevels }).isPointWalkable(mealApproach.x, mealApproach.y)).toBe(false);
       const withCafe = new Set<FacilityId>([...unlocked, 'cafeteria']);
       expect(findBestStation(agent, 'break', [], withCafe, { ...sim.facilityLevels, cafeteria: 1 })?.id).toBeDefined();
-      expect(getNavGrid({ unlockedFacilities: withCafe, facilityLevels: { ...sim.facilityLevels, cafeteria: 1 } }).isPointWalkable(-2.7, 12.1)).toBe(true);
+      expect(getNavGrid({ unlockedFacilities: withCafe, facilityLevels: { ...sim.facilityLevels, cafeteria: 1 } }).isPointWalkable(mealApproach.x, mealApproach.y)).toBe(true);
     });
     it('forces a break when energy drops below 40 or workStreak >= 2', () => {
       const rng = createRng(42);

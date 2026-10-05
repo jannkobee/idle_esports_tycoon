@@ -1,15 +1,41 @@
 # Implementation status
 
-Reviewed October 4, 2026.
+Reviewed October 5, 2026.
 
-## Verified baseline — living world, shop visits, branches, camera
+## Current pass — HQ cleanup and equipment evolution
 
-The current working tree includes the branch network, shop-visit flow, and viewport camera controls. These features are part of the currently verified baseline and the project passes the repo's test suite and TypeScript/Vite production build.
+- Removed the duplicate decorative campus buildings. Usable Merch/dining extensions and the level-6 arena connect to the main hall; the garage occupies a separate plot. Core exterior walls and extension walls now participate in navigation. A failed path no longer falls back to walking through walls.
+- Sliding door leaves park beside their openings. Real window glazing replaces glass placed over opaque wall slabs. Merch rack/counter overlaps, cafeteria furniture collisions, strategy chairs, studio sofa/table placement, and the gym barbell footprint were corrected. Old outdoor-TV/car-seat stations now describe real garden/promenade activities; players no longer sit on absent props.
+- Mobile controls fit at 390px. The scene has reserved space between HUD and inspector, and camera Reset fits the HQ while retaining manual orbit/pan/zoom. Floor switches preserve lateral framing; Reset respects the selected floor. The upper-floor roof now exists, its stair opening is genuinely cut out, and roof-on hides the upper TV label. Pause stops the simulation clock; ordinary idle income remains independent.
+- Six bounded equipment model tiers: levels 1/10/25/50/100/250. Both starter and arena PCs change geometry, monitor configuration, tower cooling, chair, finish, and trim. Other facilities gain equipment attachments at these milestones. The inspector names the current/next model and announces milestone upgrades. Level 250 is the **visual** maximum, not a purchase/income cap. No new equipment save fields or gameplay multipliers were introduced.
+- Restored pre-existing missing sports-upgrade, catering-selection, and sound-toggle store actions that caused four baseline tests to fail. Missing optional catering/sound fields receive schema-v1 defaults. These hooks do not constitute a complete sports/catering/audio product rollout.
+- Automated tests now cover all usable station approaches at each model tier, blocked-path handling, Pause, six distinct PC geometries, bounded desk sizes, and camera limits. See [HQ layout contract](HQ_LAYOUT_CONTRACT.md) before changing geometry.
 
-- Branch definitions for Los Angeles, Seoul, and Berlin are present, with persisted branch state, open/upgrade actions, an Empire drawer section, and branch income contributing to online/offline calculations.
-- Dynasty Mart and GG Boba break stations, a marked crosswalk corridor, district-tier gating, shop-visit selection, and the associated energy/tilt benefits are included in the current scene.
-- The 3D view supports orbit, pan, zoom, and reset controls through the existing camera rig, with the default framing preserved.
-- Verified baseline: `npm.cmd test -- --run` passes 71 tests and `npm.cmd run build` completes successfully on the current code. Mobile viewport checks (~390px) remain a manual validation step when visual tuning is being performed.
+Known boundaries: upstairs remains a visual inspection floor, not a simulated dorm system. Branches remain investments, not independent city/roster simulations. Real-device touch feel, GPU performance, and verified Android billing remain separate work.
+
+## Latest progression pass — rewards and active sports
+
+- The Empire drawer has a persisted, schema-v1-safe daily Reward Board. Its four objectives are driven by real gameplay actions: training/development, recruiting, completing a tournament match, and claiming HQ Pulse. Each reward can be claimed once and resets on the next UTC day.
+- Basketball and football activity stations now use dedicated character animations: basketball cycles a dribble-to-shot motion and football performs a running ball-control drill. They remain visual-only and preserve the existing autonomous simulation rewards.
+- Terminal tournament brackets are copied to a persisted Tournament Archive (last 12 events), showing the discipline, finishing round, championship/elimination result, and earned prize after the active bracket is gone.
+- The Empire drawer previews the next district, fleet, and HQ outcome before a purchase and gives immediate success feedback for district/fleet upgrades. The oversized front patio/pergola was converted into a small entry garden with a bench, wayfinding sign, and ground lights.
+- Facility growth uses connected usable rooms and shared navigation geometry. There is no separate level-3 decorative Pro Scrim building; the usable 12-rig arena opens at level 6.
+
+## Latest visual correction — solid backyard and room doors
+
+- Primary room transitions render open sliding glass-and-metal door models; their leaves do not cross the navigation openings.
+- The rear sports area is built on a continuous landscaped base with grass edging, paths, planting beds, brighter finished basketball/turf surfaces, and solid painted field boundaries. It replaces the isolated near-black court and pitch slabs seen in the prior cutaway.
+
+## HQ quality expansion — roof, rewards, multi-title capacity
+
+The current working tree retains the branch network and shop-visit flow, while the HQ now has player-controlled camera/roof options, recurring visible rewards, and scalable multi-game practice capacity. The TypeScript/Vite build succeeds, and the automated suite covers the new reward and capacity rules. The isolated Edge smoke check exercises mobile layouts and model milestones; real-device touch/performance checks remain outstanding.
+
+- Los Angeles, Seoul, and Berlin specialist branches have persisted open/upgrade state, an Empire drawer section, online/offline income, discipline-matched training bonuses, and visible tiered 3D campuses. These are investment campuses, not independent teams or city scenes; there is no per-branch roster yet.
+- Dynasty Mart and GG Boba have open-front cutaway interiors. Players on breaks can walk along the marked crosswalk into their interior stations; the boba cafe requires district tier 2. Visits restore energy, develop tilt resistance, and grant a temporary energized buff. Additional NPC shoppers enter the storefronts.
+- The camera never automatically frames shops or branches. Free orbit, pan, zoom, and floor-aware Reset remain available; the roof button toggles the selected floor's roof (plus wings on the ground floor) and garage canopy.
+- At PC Scrim Lab level 6, a visible Multi-Title Arena Wing adds 12 dedicated rigs to the existing six. Live simulation capacity rises from 8 to 18 pros; the rig visuals and stations are grouped by FPS, MOBA, battle royale, and fighting games. Players beyond the capacity remain in the roster but are not rendered/simulated in the HQ until the wing opens.
+- HQ Pulse is a repeatable, player-facing reward available every 90 seconds. It pays cash based on active pros and hype plus one Energy Can; every fifth consecutive claim pays three cans. It is persisted and cooldown-gated.
+- `npm.cmd test -- --run` passes 94 tests and `npm.cmd run build` succeeds. Automated tests cover the crosswalk path, district-tier gate, arena capacity, HQ Pulse cooldown, daily objective claims, automatic Inspired recovery, and World Championship archive but not visual appearance or touch gestures. Use the isolated Edge smoke check and inspect its screenshots for visual regressions.
 
 This section documents the active, confirmed state of the repository as it is today. Preserve schema-v1 save compatibility when making future live-world changes.
 
@@ -20,11 +46,11 @@ Facilities, an automatic team room with visible generated players, persistent ec
 ## Esports Empire & Living World (implemented)
 
 - Permanent vibrant Californian daylight replaces the player-facing day/night control; the house uses a cerulean sky and long, pale-blue distance fog.
-- The 3D exterior now contains an attached glass garage with a three-tier fleet, crosswalk, Dynasty Mart, park/plaza, tech promenade, and fan walkers whose density responds to roster fans.
+- The 3D exterior now contains an attached glass garage with a distinct Coupe → Sprinter → high-roof Tour Bus fleet, crosswalk, Dynasty Mart, tier-2 park/plaza, tier-3 tech promenade, and fan walkers whose density responds to roster fans. Completed shop and park visits automatically grant Inspired, so recovery is visible and not a player-only menu action.
 - The Empire mobile drawer provides district, fleet, and HQ evolution; a staff-designed five-block routine; autonomous player personalities and outdoor sports; 12-crest live branding and jersey colors; a staff recruitment market for coaches, managers, and nutritionists; the Spring → MSI → Summer → Worlds calendar; and a persisted VIP vanity inventory.
 
 - Staff hiring now affects gameplay directly: discipline coaches choose match tactics and ban a map before each round; executive managers provide tiered discount bonuses on purchases and deals; nutritionists apply recovery, endurance, or focus boosts that improve morale, energy, and training efficiency.
-- District tiers improve automatic income, sponsor potential, mood recovery, and visible fan density. All additions use defaults during schema-v1 save hydration.
+- District tiers improve automatic income, sponsor potential, mood recovery, and visible fan density. The World Championship writes a persisted season archive with final rank and championship status, and the Empire drawer shows the current four-stage calendar plus a live ranking slice. All additions use defaults during schema-v1 save hydration.
 - The Cosmetic Store lists 13 purchasable items across wallpaper, flooring, facade, and decorative-object categories. Energy Cans unlock them; owned house finishes can be equipped or reset to the free default. Wall, floor, facade, neon, arcade, pedestal, and vehicle-wrap purchases have corresponding 3D visuals but no gameplay bonuses. Old selected wallpapers are grandfathered during hydration. The cutaway's locked-room surfaces and front glass frames were lightened to remove opaque black patches.
 - Android-only Google Play checkout is a prepared host bridge, not a live payment integration: the repository has no Android shell, Play Console catalog, or server-side purchase verification. The bridge must return a server-verified matching product entitlement before the app grants an item. A normal browser offers Energy Cans only.
 
@@ -54,7 +80,7 @@ The simulation incorporates realistic player lifecycle systems:
 - Interior upgrades: Customizable wall themes (Pro Modern, Neon Cyberpunk, Carbon Stealth, Scandinavian) and an upgradable 3-tier Team Lounge TV entertainment wall boosting roster mood and sleep.
 - Global Tournaments: Global power rankings with 12 world orgs. The current tournament flow is the persisted bracket described above; the older halftime crisis flow is no longer player-facing.
 
-Up to eight actual roster members live and train in the house simultaneously, matched to their portrait appearance and jersey uniforms. Income is credited by the existing economy tick. Pause and camera controls (pan, zoom, reset) remain available; daylight is fixed.
+Up to eight actual roster members (18 after the level-6 arena unlock) live and train in the house simultaneously, matched to their portrait appearance and jersey uniforms. Income is credited by the existing economy tick. Pause and camera controls (pan, zoom, reset) remain available; daylight is fixed.
 
 Scouts receive unused appearances until all six are represented, with Diamond and Gold tier recruits granting large fan surges and clutch factor traits. Saves remain backwards compatible with `esports_dynasty_save_v1` without losing progress.
 
@@ -64,7 +90,7 @@ Income retains fractional cash and accounts for partial boost expiry. Hidden tab
 
 The store is unified with Zustand persistence. Ads are store-driven; IAdService is an interface with mock providers.
 
-## Review fixes
+## Historical review fixes (newer sections supersede retired features)
 
 - Fixed missing discipline metadata, fighting-game types, and an unused import blocking builds.
 - Fixed fractional income loss, offline boost expiry, ad-dialog stacking, and stale persisted ad state.
@@ -80,14 +106,15 @@ The store is unified with Zustand persistence. Ads are store-driven; IAdService 
 
 ## Prioritized remaining work
 
-1. Add a richer visual eight-team bracket tree, rival match score simulation, event history, and more distinct discipline-specific match formats. The current bracket persists active/results state but archives only the latest event.
-2. Add x10/Max facility purchases and automated training speedups.
-3. Complete native Capacitor packaging and AdMob test suites for mobile deployment.
-4. Complete prestige UI and trophy benefits; PWA installation/offline service worker.
+1. Expose occupied/available room stations, capacity bottlenecks, and purchase previews; add x10/Max purchases without bypassing costs.
+2. Improve staff-led rotations for larger multi-discipline rosters; implement upstairs simulation before calling dorms functional.
+3. Connect existing daily/HQ rewards to longer-term facility, development, and tournament milestones. Event history already retains 12 completed tournaments.
+4. Develop branches into independent teams/city scenes; currently they are investment campuses.
+5. Android packaging, device performance/touch tests, AdMob tests, server-verified Google Play billing, prestige UI, and PWA installation/offline support.
 
 ## Verification
 
-`npm.cmd test -- --run` passes 71 tests covering formulas, store transitions, cosmetic ownership and Android billing gating, save compatibility, coach lineup and routine choices, sports autonomy, room/ad funding, card development, and tournament brackets. `npm.cmd run build` verifies strict TypeScript compilation and production bundling. Mobile viewport and 3D appearance checks (~390px) remain manual verification tasks; no browser automation is configured here.
+`npm.cmd test -- --run` passes 94 tests covering formulas, store transitions, HQ Pulse cooldowns, daily objective claims, multi-title arena capacity, branch purchases and income, crosswalk/shop routing, automatic Inspired recovery, season archive persistence, cosmetic ownership and Android billing gating, save compatibility, coach lineup and routine choices, sports autonomy, room/ad funding, card development, and tournament brackets. `npm.cmd run build` verifies strict TypeScript compilation and production bundling. `node scripts/verify-hq.mjs` captures starter/max-tier and floor/roof states at 390×844 and checks portrait/landscape control bounds in isolated Edge. Real-device gestures and performance remain unverified.
 
 Suggested browser checks: claim offline rewards through an ad; skip and retry scouting; recruit each genre; resume after boost expiry; reload an unclaimed offline reward; watch five sponsor clips to inspect payouts.
 

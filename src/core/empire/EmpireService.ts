@@ -33,6 +33,14 @@ export interface SeasonCalendar {
   trophies: number;
 }
 
+/** Immutable record created after each World Championship, for the season archive. */
+export interface SeasonHistoryEntry {
+  year: number;
+  stageWins: Record<SeasonStage, number>;
+  worldChampion: boolean;
+  finalRank: number;
+}
+
 export const PERSONALITY_DETAILS: Record<PlayerPersonality, { label: string; perk: string }> = {
   grinder: { label: 'The Grinder', perk: '+25% training speed; needs regular rest.' },
   showman: { label: 'The Showman', perk: '+50% stream hype and fan energy.' },

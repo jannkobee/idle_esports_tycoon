@@ -28,3 +28,10 @@ export function branchIncomePerSecond(branches: EsportsBranch[] = []): number {
     return total + (definition ? definition.baseIncome * Math.max(1, Math.min(3, branch.tier)) : 0);
   }, 0);
 }
+
+export function branchTrainingMultiplier(branches: EsportsBranch[] = [], discipline: EsportsDiscipline): number {
+  return 1 + branches.reduce((bonus, branch) => {
+    const definition = BRANCHES.find(item => item.id === branch.id);
+    return bonus + (definition?.discipline === discipline ? Math.max(1, Math.min(3, branch.tier)) * 0.05 : 0);
+  }, 0);
+}

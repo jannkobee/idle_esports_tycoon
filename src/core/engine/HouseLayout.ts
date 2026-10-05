@@ -1,4 +1,5 @@
 import { FacilityId } from '../types/facility.types';
+import { CAMPUS } from '../house/campusLayout';
 
 export interface HouseRoom {
   id: FacilityId;
@@ -16,8 +17,8 @@ export const HOUSE_ROOMS: HouseRoom[] = [
   { id: 'streaming_pod', label: 'STREAM STUDIO', x: 7.4, y: .4, w: 6.2, d: 5.8, floor: '#dfcce8', accent: '#ac67cc' },
   { id: 'analyst_room', label: 'STRATEGY ROOM', x: .4, y: 7.5, w: 6, d: 6.1, floor: '#cad8eb', accent: '#618dd2' },
   { id: 'gym', label: 'TEAM GYM', x: 7.4, y: 7.5, w: 3, d: 6.1, floor: '#e7d8b0', accent: '#d8a949' },
-  { id: 'merch_store', label: 'MERCH SHOP', x: 11, y: 7.5, w: 2.6, d: 6.1, floor: '#d0e5bf', accent: '#77aa50' },
-  { id: 'cafeteria', label: 'CAFETERIA', x: -5.4, y: 7.5, w: 5.2, d: 6.1, floor: '#fed7aa', accent: '#f97316' },
+  { id: 'merch_store', label: 'MERCH SHOWROOM', ...CAMPUS.merch, floor: '#d0e5bf', accent: '#77aa50' },
+  { id: 'cafeteria', label: 'CAFETERIA', ...CAMPUS.dining, floor: '#fed7aa', accent: '#f97316' },
 ];
 
 export const iso = (x: number, y: number, z = 0) => ({ x: 430 + (x - y) * 26, y: 176 + (x + y) * 13 - z });

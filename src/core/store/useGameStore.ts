@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { CATERING_PLANS, CateringPlanId } from '../facilities/catering';
+import { sound } from '../audio/SoundService';
 import { Facility, FacilityId } from '../types/facility.types';
 import { ProPlayer, PlayerStats, CardAttributes, EsportsDiscipline, DISCIPLINE_INFO, Coach, INITIAL_COACHES } from '../types/player.types';
 import { ActivityGains } from '../types/house.types';
@@ -9,12 +11,13 @@ import { getPortraitIndex, PLAYER_IDENTITIES } from '../engine/PlayerAppearance'
 import { CARD_PACK_COST, LINEUP_SLOTS, TeamLineups, autoFillLineup, developmentCost, developmentRate, duplicateKey, duplicateValue, generateCard, getCardAttributes, isMatchEligible, lineupPower, resolveLineup, trainingCeiling } from '../cards/CardService';
 import { CircuitEvent, TOURNAMENTS, createCircuit, playCircuitRound } from '../tournaments/CircuitService';
 import { StaffCandidate, coachPlan, coachSelectLineup, generateStaffMarket, managerDiscount, managerRatingBonus, nutritionBonus, staffDailySchedule, staffSlot } from '../staff/StaffService';
-import { BRANCHES, BranchId, EsportsBranch, branchIncomePerSecond, branchUpgradeCost } from '../empire/BranchService';
+import { BRANCHES, BranchId, EsportsBranch, branchIncomePerSecond, branchTrainingMultiplier, branchUpgradeCost } from '../empire/BranchService';
+import { DAILY_OBJECTIVES, DailyObjectiveId, DailyObjectivesState, createDailyObjectives, currentDailyObjectives } from '../progression/DailyObjectives';
 import {
   DistrictTier, ExecutiveRole, ExecutiveStaff, FacilityTier, FleetTier, INITIAL_BRANDING,
   INITIAL_EXECUTIVES, INITIAL_SEASON, OrgBranding, PlayerPersonality, ScheduleBlock,
-  SeasonCalendar, SportsTier, VipItemId, VIP_ITEMS, districtBonuses, nextSeasonStage,
-  scheduleSynergy,
+  SeasonCalendar, SeasonHistoryEntry, SportsTier, VipItemId, VIP_ITEMS, districtBonuses, nextSeasonStage,
+  scheduleSynergy, BASKETBALL_TIER_DETAILS, FOOTBALL_TIER_DETAILS,
 } from '../empire/EmpireService';
 
 export type TimeOfDay = 'day' | 'sunset' | 'night';
@@ -40,6 +43,8 @@ export interface EmpireState {
   schedule: ScheduleBlock[];
   executives: ExecutiveStaff[];
   seasonCalendar: SeasonCalendar;
+  /** Optional so saves written before the season archive remain valid. */
+  seasonHistory?: SeasonHistoryEntry[];
   vipInventory: VipItemId[];
 }
 
@@ -54,6 +59,7 @@ export const INITIAL_EMPIRE: EmpireState = {
   schedule: ['scrim', 'vod', 'gym', 'outdoor', 'rest'],
   executives: INITIAL_EXECUTIVES,
   seasonCalendar: INITIAL_SEASON,
+  seasonHistory: [],
   vipInventory: [],
 };
 
@@ -106,6 +112,16 @@ export interface ActiveTournamentMatch {
   opponentScore: number;
   playByPlay: string[];
   isUnderway: boolean;
+}
+
+export interface TournamentHistoryEntry {
+  id: string;
+  name: string;
+  discipline: EsportsDiscipline;
+  result: 'champion' | 'eliminated';
+  completedAt: number;
+  finalRound: string;
+  prize: number;
 }
 
 export const INITIAL_POWER_RANKINGS: PowerRankingTeam[] = [
@@ -293,6 +309,12 @@ interface GameStoreState {
   // Facilities
   facilities: Record<FacilityId, Facility>;
   roomFunding: Partial<Record<FacilityId, number>>;
+  cateringPlan?: CateringPlanId;
+  soundEnabled?: boolean;
+  setCateringPlan: (plan: CateringPlanId) => boolean;
+  toggleSound: () => boolean;
+  upgradeBasketball: () => boolean;
+  upgradeFootball: () => boolean;
 
   // Roster
   roster: ProPlayer[];
@@ -312,6 +334,9 @@ interface GameStoreState {
   pendingCallback: ((success: boolean) => void) | null;
   offlineModal: OfflineModalData | null;
   activeDrone: DroneDropData | null;
+  lastHqPulseAt: number;
+  hqPulseStreak: number;
+  dailyObjectives?: DailyObjectivesState;
 
   // Actions
   upgradeFacility: (id: FacilityId) => boolean;
@@ -325,6 +350,9 @@ interface GameStoreState {
   requestAd: (placement: AdPlacement, onCompleted?: (success: boolean) => void) => void;
   closeAdModal: (completed: boolean) => void;
   addBoostHours: (hours: number) => void;
+  claimHqPulse: (now?: number) => number;
+  recordDailyObjective: (id: DailyObjectiveId, amount?: number) => void;
+  claimDailyObjective: (id: DailyObjectiveId) => boolean;
   getBoostStatus: () => AdBoostStatus;
   
   // Roster Management
@@ -380,6 +408,7 @@ interface GameStoreState {
   isTournamentUnderway: boolean;
   activeTournamentMatch: ActiveTournamentMatch | null;
   circuitEvent: CircuitEvent | null;
+  tournamentHistory?: TournamentHistoryEntry[];
   startCircuit: (discipline: EsportsDiscipline, now?: number, tournamentId?: string) => boolean;
   playNextCircuitRound: (now?: number) => boolean;
   recordTournamentOutcome: (won: boolean, tourneyId: string, opponentId?: string) => void;
@@ -507,6 +536,34 @@ export const useGameStore = create<GameStoreState>()(
 
       facilities: INITIAL_FACILITIES,
       roomFunding: {},
+      cateringPlan: 'standard',
+      soundEnabled: true,
+      setCateringPlan: (plan) => {
+        const definition = CATERING_PLANS[plan];
+        if (!definition || get().cateringPlan === plan || get().cash < definition.cost) return false;
+        set(state => ({ cash: state.cash - definition.cost, cateringPlan: plan }));
+        return true;
+      },
+      toggleSound: () => {
+        const enabled = !(get().soundEnabled ?? true);
+        sound.setSoundEnabled(enabled);
+        set({ soundEnabled: enabled });
+        return enabled;
+      },
+      upgradeBasketball: () => {
+        const tier = get().empire.basketballTier ?? 1;
+        const cost = BASKETBALL_TIER_DETAILS[tier]?.cost;
+        if (tier >= 3 || !cost || get().cash < cost) return false;
+        set(state => ({ cash: state.cash - cost, empire: { ...state.empire, basketballTier: (tier + 1) as SportsTier } }));
+        return true;
+      },
+      upgradeFootball: () => {
+        const tier = get().empire.footballTier ?? 1;
+        const cost = FOOTBALL_TIER_DETAILS[tier]?.cost;
+        if (tier >= 3 || !cost || get().cash < cost) return false;
+        set(state => ({ cash: state.cash - cost, empire: { ...state.empire, footballTier: (tier + 1) as SportsTier } }));
+        return true;
+      },
       roster: INITIAL_ROSTER,
       developmentPoints: 0,
       teamLineups: {},
@@ -519,10 +576,14 @@ export const useGameStore = create<GameStoreState>()(
       pendingCallback: null,
       offlineModal: null,
       activeDrone: null,
+      lastHqPulseAt: 0,
+      hqPulseStreak: 0,
+      dailyObjectives: createDailyObjectives(),
       powerRankings: INITIAL_POWER_RANKINGS,
       isTournamentUnderway: false,
       activeTournamentMatch: null,
       circuitEvent: null,
+      tournamentHistory: [],
       coaches: INITIAL_COACHES,
       staffMarket: generateStaffMarket(INITIAL_STAFF_SEED),
       hiredStaff: [],
@@ -589,7 +650,9 @@ export const useGameStore = create<GameStoreState>()(
         // Reset daily ad counters if new day
         const todayStr = new Date().toISOString().split('T')[0];
         if (get().lastAdResetDate !== todayStr) {
-          set({ dailyAdsWatched: 0, lastAdResetDate: todayStr });
+          set({ dailyAdsWatched: 0, lastAdResetDate: todayStr, dailyObjectives: createDailyObjectives(todayStr) });
+        } else if ((get().dailyObjectives?.date ?? '') !== todayStr) {
+          set({ dailyObjectives: createDailyObjectives(todayStr) });
         }
 
         const deltaSeconds = Math.max(0, (currentTimestamp - lastSavedTimestamp) / 1000);
@@ -709,6 +772,47 @@ export const useGameStore = create<GameStoreState>()(
         const newExpiry = Math.min(now + maxBoostMs, currentActiveUntil + addedMs);
 
         set({ boostExpiresAt: newExpiry });
+      },
+
+      claimHqPulse: (now = Date.now()) => {
+        const state = get();
+        const cooldown = 90_000;
+        if (now - (state.lastHqPulseAt ?? 0) < cooldown) return 0;
+        const activePros = state.roster.filter(player => player.role !== 'inactive').length;
+        const reward = 125 + Math.min(activePros, 18) * 25 + Math.min(250, Math.floor(state.hype / 20));
+        const nextStreak = (state.hqPulseStreak ?? 0) + 1;
+        set({
+          cash: state.cash + reward,
+          lifetimeEarnings: state.lifetimeEarnings + reward,
+          energyCans: state.energyCans + (nextStreak % 5 === 0 ? 3 : 1),
+          lastHqPulseAt: now,
+          hqPulseStreak: nextStreak,
+        });
+        get().recordDailyObjective('pulse');
+        return reward;
+      },
+
+      recordDailyObjective: (id, amount = 1) => set(state => {
+        const objectives = currentDailyObjectives(state.dailyObjectives);
+        const definition = DAILY_OBJECTIVES.find(item => item.id === id);
+        if (!definition || objectives.claimed.includes(id)) return { dailyObjectives: objectives };
+        return { dailyObjectives: { ...objectives, progress: { ...objectives.progress, [id]: Math.min(definition.target, objectives.progress[id] + amount) } } };
+      }),
+
+      claimDailyObjective: (id) => {
+        const state = get();
+        const objectives = currentDailyObjectives(state.dailyObjectives);
+        const definition = DAILY_OBJECTIVES.find(item => item.id === id);
+        if (!definition || objectives.claimed.includes(id) || objectives.progress[id] < definition.target) return false;
+        const reward = definition.reward;
+        set({
+          cash: state.cash + (reward.cash ?? 0),
+          lifetimeEarnings: state.lifetimeEarnings + (reward.cash ?? 0),
+          hype: state.hype + (reward.hype ?? 0),
+          energyCans: state.energyCans + (reward.energyCans ?? 0),
+          dailyObjectives: { ...objectives, claimed: [...objectives.claimed, id] },
+        });
+        return true;
       },
 
       getBoostStatus: () => {
@@ -835,6 +939,7 @@ export const useGameStore = create<GameStoreState>()(
           hype: get().hype + hypeSurge,
           roster: [...roster, newPlayer],
         });
+        get().recordDailyObjective('recruit');
 
         return newPlayer;
       },
@@ -847,6 +952,7 @@ export const useGameStore = create<GameStoreState>()(
         const card = generateCard(discipline, state.roster.length);
         const signed = { ...card, dailySchedule: staffDailySchedule(state.hiredStaff) };
         set({ cash: state.cash - cost, roster: [...state.roster, signed] });
+        get().recordDailyObjective('recruit');
         return signed;
       },
 
@@ -893,6 +999,7 @@ export const useGameStore = create<GameStoreState>()(
           cardAttributes: { ...getCardAttributes(card), [attribute]: current + 1 },
           stats: linked ? { ...card.stats, [linked]: current + 1 } : card.stats,
         } : card) });
+        get().recordDailyObjective('train');
         return true;
       },
 
@@ -1130,10 +1237,17 @@ export const useGameStore = create<GameStoreState>()(
         const calendar = empire.seasonCalendar;
         const stageWins = { ...calendar.stageWins, [calendar.stage]: calendar.stageWins[calendar.stage] + (won ? 1 : 0) };
         const next = nextSeasonStage(calendar.stage);
+        const playerRank = state.powerRankings.find(team => team.isPlayerTeam)?.rank ?? state.powerRankings.length;
+        const completedSeason: SeasonHistoryEntry | null = calendar.stage === 'worlds'
+          ? { year: calendar.year, stageWins, worldChampion: won, finalRank: playerRank }
+          : null;
         return {
           empire: {
             ...empire,
             seasonCalendar: { year: calendar.year + (calendar.stage === 'worlds' ? 1 : 0), stage: next, stageWins, trophies: calendar.trophies + (won && calendar.stage === 'worlds' ? 1 : 0) },
+            seasonHistory: completedSeason
+              ? [completedSeason, ...(empire.seasonHistory ?? [])].slice(0, 8)
+              : (empire.seasonHistory ?? []),
           },
           legacyTrophies: state.legacyTrophies + (won && calendar.stage === 'worlds' ? 1 : 0),
           roster: calendar.stage === 'worlds' ? state.roster.map(player => ({ ...player, age: Math.min(40, (player.age ?? 22) + 1) })) : state.roster,
@@ -1154,6 +1268,7 @@ export const useGameStore = create<GameStoreState>()(
           cardAttributes: { ...getCardAttributes(candidate), [attribute]: current + 1 },
           stats: linked ? { ...candidate.stats, [linked]: current + 1 } : candidate.stats,
         } : candidate) });
+        get().recordDailyObjective('train');
         return true;
       },
 
@@ -1191,6 +1306,7 @@ export const useGameStore = create<GameStoreState>()(
             return p;
           }),
         });
+        get().recordDailyObjective('train');
       },
 
       applyActivityGains: (gains: ActivityGains) => {
@@ -1204,16 +1320,21 @@ export const useGameStore = create<GameStoreState>()(
           hype: state.hype + gains.hype * (1 + synergy + (showmanCount ? 0.5 : 0)),
           roster: state.roster.map(player => {
             const statGains = gains.stats[player.id];
-            if (!statGains) return player;
+            const inspired = gains.inspiredPlayers?.includes(player.id) ?? false;
+            if (!statGains && !inspired) return player;
+            if (!statGains) return { ...player, inspiredUntil: Date.now() + 10 * 60 * 1000 };
             const stats = { ...player.stats };
             const trainingProgress = { ...player.trainingProgress };
             const cap = trainingCeiling(player);
             for (const stat of Object.keys(statGains) as (keyof PlayerStats)[]) {
               let multiplier = 1 + synergy;
+              const catering = CATERING_PLANS[state.cateringPlan ?? 'standard'];
+              multiplier *= stat === 'aim' ? catering.aimMultiplier : stat === 'macro' ? catering.macroMultiplier : stat === 'tiltResistance' ? catering.tiltResistanceMultiplier : 1;
               if (player.personality === 'grinder' && (stat === 'aim' || stat === 'macro')) multiplier *= 1.25;
               if (player.personality === 'tactician' && stat === 'macro') multiplier *= 1.35;
               if (player.personality === 'scaling') multiplier *= (player.age ?? 22) <= 22 ? 1.5 : 1.15;
               multiplier *= developmentRate(player) * (1 + nutritionBonus(state.hiredStaff).training);
+              multiplier *= branchTrainingMultiplier(empire.branches, player.discipline);
               if ((player.inspiredUntil ?? 0) > Date.now()) multiplier *= 1.15;
               const total = (trainingProgress[stat] ?? 0) + (statGains[stat] ?? 0) * multiplier;
               stats[stat] = Math.min(cap, stats[stat] + Math.floor(total));
@@ -1222,7 +1343,8 @@ export const useGameStore = create<GameStoreState>()(
             const attributes = getCardAttributes(player);
             return { ...player, stats, trainingProgress,
               cardAttributes: { ...attributes, mechanics: stats.aim, gameSense: stats.macro, teamwork: stats.comms, clutch: stats.tiltResistance },
-              energy: opsHired ? Math.max(25 + Math.round(managerRatingBonus(state.hiredStaff, 'ops') * 100), player.energy ?? 80) : player.energy };
+              energy: opsHired ? Math.max(25 + Math.round(managerRatingBonus(state.hiredStaff, 'ops') * 100), player.energy ?? 80) : player.energy,
+              inspiredUntil: inspired ? Date.now() + 10 * 60 * 1000 : player.inspiredUntil };
           }),
         });
         });
@@ -1323,6 +1445,18 @@ export const useGameStore = create<GameStoreState>()(
         const resultRound = next.rounds[index];
         set({ circuitEvent: next });
         get().recordTournamentOutcome(resultRound.result!.won, next.id, resultRound.opponent.id);
+        if (next.status !== 'active') {
+          const archiveEntry: TournamentHistoryEntry = {
+            id: next.id,
+            name: next.name,
+            discipline: next.discipline,
+            result: next.status === 'won' ? 'champion' : 'eliminated',
+            completedAt: now,
+            finalRound: resultRound.name,
+            prize: next.status === 'won' ? next.prize : 0,
+          };
+          set(current => ({ tournamentHistory: [archiveEntry, ...(current.tournamentHistory ?? [])].slice(0, 12) }));
+        }
         if (next.status === 'won') {
           set(current => ({ cash: current.cash + next.prize, lifetimeEarnings: current.lifetimeEarnings + next.prize, hype: current.hype + (next.hypePrize ?? 100) }));
           get().advanceSeasonStage(true);
@@ -1441,6 +1575,7 @@ export const useGameStore = create<GameStoreState>()(
           isTournamentUnderway: false,
           activeTournamentMatch: null,
         });
+        get().recordDailyObjective('match');
       },
     }),
     {
@@ -1479,6 +1614,8 @@ export const useGameStore = create<GameStoreState>()(
         }),
         facilities: { ...INITIAL_FACILITIES, ...(previous.facilities ?? {}) },
         roomFunding: previous.roomFunding ?? {},
+        cateringPlan: previous.cateringPlan && CATERING_PLANS[previous.cateringPlan] ? previous.cateringPlan : 'standard',
+        soundEnabled: previous.soundEnabled ?? true,
         teamLineups: previous.teamLineups ?? {},
         developmentPoints: previous.developmentPoints ?? 0,
         powerRankings: previous.powerRankings ?? current.powerRankings ?? INITIAL_POWER_RANKINGS,
@@ -1502,6 +1639,7 @@ export const useGameStore = create<GameStoreState>()(
             ...(previous.empire?.seasonCalendar ?? {}),
             stageWins: { ...INITIAL_EMPIRE.seasonCalendar.stageWins, ...(previous.empire?.seasonCalendar?.stageWins ?? {}) },
           },
+          seasonHistory: previous.empire?.seasonHistory ?? [],
           vipInventory: Array.from(new Set([
             ...(previous.empire?.vipInventory ?? []),
             ...(previous.houseInterior?.wallpaperStyle && previous.houseInterior.wallpaperStyle !== 'default'
@@ -1512,10 +1650,12 @@ export const useGameStore = create<GameStoreState>()(
         isTournamentUnderway: false,
         activeTournamentMatch: null,
         circuitEvent: previous.circuitEvent ?? null,
+        tournamentHistory: previous.tournamentHistory ?? [],
         isSimulatedAdOpen: false,
         pendingPlacement: null,
         pendingCallback: null,
         activeDrone: null,
+        dailyObjectives: currentDailyObjectives(previous.dailyObjectives),
       });
       },
     }

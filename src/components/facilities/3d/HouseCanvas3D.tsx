@@ -9,7 +9,11 @@ import { HouseEnvironment3D } from './HouseEnvironment3D';
 import { HouseRooms3D } from './HouseRooms3D';
 import { HouseFurniture3D } from './HouseFurniture3D';
 import { HouseCharacters3D } from './HouseCharacters3D';
+import { HouseFacilityWings3D } from './HouseFacilityWings3D';
+import { HouseStaff3D } from './HouseStaff3D';
+import { HouseSecondFloor3D } from './HouseSecondFloor3D';
 import type { EmpireState } from '../../../core/store/useGameStore';
+import { HOUSE_CAMERA_LIMITS, houseCameraView } from '../../../core/house/houseView';
 
 interface HouseCanvas3DProps {
   facilities: Record<FacilityId, Facility>;
@@ -20,25 +24,41 @@ interface HouseCanvas3DProps {
   paused: boolean;
   zoomStep: number;
   resetView: number;
+  showRoof: boolean;
   onSelectRoom: (id: FacilityId) => void;
   onSelectPlayer: (id: string) => void;
   empire: EmpireState;
+  activeFloor?: 1 | 2;
 }
 
-const DEFAULT_CAMERA_POS: [number, number, number] = [27, 28, 27];
-const DEFAULT_TARGET: [number, number, number] = [7, 0, 7];
+const DEFAULT_CAMERA_POS = houseCameraView(1, 1).position;
+const DEFAULT_TARGET = houseCameraView(1, 1).target;
 
 function CameraRig({
   zoomStep,
   resetView,
+  activeFloor = 1,
 }: {
   zoomStep: number;
   resetView: number;
+  activeFloor?: 1 | 2;
 }) {
   const controls = useRef<OrbitControlsImpl>(null);
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const lastZoom = useRef(zoomStep);
-  const lastReset = useRef(resetView);
+  const lastFloor = useRef(activeFloor);
+
+  // Smooth camera elevation when switching floors
+  useEffect(() => {
+    if (activeFloor === lastFloor.current) return;
+    const camYOffset = activeFloor === 2 ? 3.2 : -3.2;
+    camera.position.y += camYOffset;
+    if (controls.current) {
+      controls.current.target.y += camYOffset;
+      controls.current.update();
+    }
+    lastFloor.current = activeFloor;
+  }, [camera, activeFloor]);
 
   // Handle zoom step adjustments from HUD buttons
   useEffect(() => {
@@ -46,22 +66,22 @@ function CameraRig({
     const factor = zoomStep > lastZoom.current ? 0.84 : 1.19;
     const target = controls.current?.target;
     if (target) {
-      camera.position.sub(target).multiplyScalar(factor).add(target);
+      const distance = Math.max(HOUSE_CAMERA_LIMITS.minDistance, Math.min(HOUSE_CAMERA_LIMITS.maxDistance, camera.position.distanceTo(target) * factor));
+      camera.position.sub(target).normalize().multiplyScalar(distance).add(target);
       controls.current?.update();
     }
     lastZoom.current = zoomStep;
   }, [camera, zoomStep]);
 
-  // Handle reset camera view from HUD button
+  // Manual camera: Reset is the only programmatic movement.
   useEffect(() => {
-    if (resetView === lastReset.current) return;
-    camera.position.set(...DEFAULT_CAMERA_POS);
+    const view = houseCameraView(size.width / size.height, lastFloor.current);
+    camera.position.set(...view.position);
     if (controls.current) {
-      controls.current.target.set(...DEFAULT_TARGET);
+      controls.current.target.set(...view.target);
       controls.current.update();
     }
-    lastReset.current = resetView;
-  }, [camera, resetView]);
+  }, [camera, resetView, size.width, size.height]);
 
   return (
     <OrbitControls
@@ -70,10 +90,11 @@ function CameraRig({
       enableRotate={true}
       enablePan={true}
       enableZoom={true}
-      minDistance={16}
-      maxDistance={46}
-      minPolarAngle={Math.PI / 4.2}
-      maxPolarAngle={Math.PI / 2.3}
+      minDistance={HOUSE_CAMERA_LIMITS.minDistance}
+      maxDistance={HOUSE_CAMERA_LIMITS.maxDistance}
+      minPolarAngle={0.12}
+      maxPolarAngle={Math.PI / 2.02}
+      screenSpacePanning
       dampingFactor={0.08}
     />
   );
@@ -88,9 +109,11 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
   paused,
   zoomStep,
   resetView,
+  showRoof,
   onSelectRoom,
   onSelectPlayer,
   empire,
+  activeFloor = 1,
 }) => {
 
   return (
@@ -100,7 +123,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
         dpr={[1, 1.75]}
         camera={{
           position: DEFAULT_CAMERA_POS,
-          fov: 34,
+          fov: 42,
           near: 0.2,
           far: 240,
         }}
@@ -110,7 +133,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
         }}
       >
         <color attach="background" args={['#38bdf8']} />
-        <fog attach="fog" args={['#bae6fd', 110, 240]} />
+        <fog attach="fog" args={['#bae6fd', 80, 180]} />
 
         {/* Ambient & Key Lighting */}
         <ambientLight
@@ -122,6 +145,15 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
             '#e0f2fe', '#15803d', 0.95,
           ]}
         />
+        {/* Soft high-altitude clouds keep daylight vivid without a dark horizon. */}
+        {[[-36, 24, -55, 11], [-5, 31, -72, 15], [33, 27, -48, 12], [55, 35, -80, 18]].map(([x, y, z, scale], index) => (
+          <group key={index} position={[x, y, z]}>
+            {[-0.7, 0, 0.75].map((offset, part) => <mesh key={part} position={[offset * scale, part % 2 ? 0.35 : 0, 0]}>
+              <sphereGeometry args={[scale * (part === 1 ? 0.58 : 0.46), 16, 10]} />
+              <meshBasicMaterial color="#f8fdff" transparent opacity={0.72} depthWrite={false} />
+            </mesh>)}
+          </group>
+        ))}
         <directionalLight
           position={[12, 26, 16]}
           intensity={2.65}
@@ -149,17 +181,30 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
           />
 
           {/* Exterior Landscape, Street, and Parked Sports Car */}
-          <HouseEnvironment3D empire={empire} />
+          <HouseEnvironment3D empire={empire} showRoof={showRoof} />
 
           {/* Room Architectures, Distinct Floors, and Partition Walls */}
           <HouseRooms3D
             facilities={facilities}
             selectedRoomId={roomId}
             onSelectRoom={onSelectRoom}
+            showRoof={showRoof && activeFloor === 1}
           />
 
           {/* Detailed 3D Furniture & Equipment Models */}
-          <HouseFurniture3D facilities={facilities} />
+          <HouseFurniture3D facilities={facilities} showRoof={showRoof} />
+
+          <HouseFacilityWings3D facilities={facilities} showRoof={showRoof && activeFloor === 1} onSelectRoom={onSelectRoom} />
+          <HouseStaff3D facilities={facilities} paused={paused} branding={empire.branding} />
+
+          {/* 2nd Floor (Upper Living Quarters, Penthouse Dorms, Luxury Restroom, Balcony) */}
+          {activeFloor === 2 && (
+            <HouseSecondFloor3D
+              facilities={facilities}
+              showRoof={showRoof}
+              branding={empire.branding}
+            />
+          )}
 
           {/* Realistic 3D Characters & Procedural Movement */}
           <HouseCharacters3D
@@ -173,7 +218,7 @@ export const HouseCanvas3D: React.FC<HouseCanvas3DProps> = ({
         </Suspense>
 
         {/* Mobile Camera Rig with Touch Orbit / Pan / Pinch-Zoom */}
-        <CameraRig zoomStep={zoomStep} resetView={resetView} />
+        <CameraRig zoomStep={zoomStep} resetView={resetView} activeFloor={activeFloor} />
       </Canvas>
     </div>
   );

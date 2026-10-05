@@ -1,10 +1,12 @@
 import { HOUSE_ROOMS } from '../engine/HouseLayout';
+import { CAMPUS, arenaOpen, campusWalls, CORE_SHELL_WALLS, DINING_OBSTACLES } from './campusLayout';
 import { FacilityId } from '../types/facility.types';
 import { HouseStation, Rect, Vec } from '../types/house.types';
 import {
   BLOCKED_STRIP,
   FRONT_DOOR_SPAWN,
   HOUSE_FURNITURE,
+  HOUSE_STATIONS,
   HOUSE_WALLS,
 } from './houseGeometry';
 
@@ -58,10 +60,12 @@ export class NavGrid {
   private readonly activeObstacles: Rect[];
   private readonly lockedRoomRects: Rect[];
   private readonly cafeteriaOpen: boolean;
+  private readonly arenaUnlocked: boolean;
 
   constructor(context: NavContext) {
     const { unlockedFacilities, facilityLevels } = context;
     this.cafeteriaOpen = unlockedFacilities.has('cafeteria');
+    this.arenaUnlocked = arenaOpen(unlockedFacilities, facilityLevels);
     const sortedRooms = Array.from(unlockedFacilities).sort().join(',');
     const sortedLevels = Object.entries(facilityLevels)
       .sort(([a], [b]) => a.localeCompare(b))
@@ -71,7 +75,22 @@ export class NavGrid {
 
     this.walkable = new Uint8Array(COLS * ROWS);
     this.activeObstacles = [];
+    this.activeObstacles.push(...campusWalls(unlockedFacilities, facilityLevels));
+    this.activeObstacles.push(...CORE_SHELL_WALLS);
+    // Staircase is architectural only until upper-floor simulation is supported.
+    this.activeObstacles.push({ x: 6.4, y: 0.6, w: 1, d: 2.4 });
+    // Garage is scenery, not a shortcut through the vehicle and workshop.
+    this.activeObstacles.push(CAMPUS.garage);
+    if (this.arenaUnlocked) {
+      for (const station of HOUSE_STATIONS.filter(s => s.id.startsWith('arena_station_'))) {
+        this.activeObstacles.push({ x: station.seat.x - 0.425, y: station.seat.y - 0.74, w: 0.85, d: 0.58 });
+      }
+    }
+    if (this.cafeteriaOpen) {
+      this.activeObstacles.push(...DINING_OBSTACLES);
+    }
     this.lockedRoomRects = [];
+    if (!this.arenaUnlocked) this.lockedRoomRects.push(CAMPUS.arena);
 
     // 1. Walls are obstacles
     for (const w of HOUSE_WALLS) {
@@ -357,8 +376,8 @@ export function findAStarPath(grid: NavGrid, start: Vec, goal: Vec): Vec[] {
     }
     rawPoints.reverse();
   } else {
-    // Fallback: direct line to goalWalkable if path not found
-    rawPoints = [startWalkable, goalWalkable];
+    // Never manufacture a route through walls when no valid path exists.
+    return [];
   }
 
   // Smooth path with line-of-sight checks
@@ -419,6 +438,7 @@ export function createStationRoute(
 
   // 2. Middle leg: A* path from navStart to target approach
   const navPath = findAStarPath(grid, navStart, navGoal);
+  if (!navPath.length) return [];
   for (let i = 1; i < navPath.length; i++) {
     route.push(navPath[i]);
   }

@@ -16,6 +16,34 @@ describe('useGameStore', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('opens and upgrades specialist branches without double charging', () => {
+    useGameStore.setState({ cash: 100000 });
+    expect(useGameStore.getState().openBranch('west_coast')).toBe(true);
+    expect(useGameStore.getState().cash).toBe(82000);
+    expect(useGameStore.getState().openBranch('west_coast')).toBe(false);
+    expect(useGameStore.getState().upgradeBranch('west_coast')).toBe(true);
+    expect(useGameStore.getState().empire.branches).toEqual([{ id: 'west_coast', tier: 2 }]);
+    expect(useGameStore.getState().cash).toBe(49600);
+  });
+
+  it('gives an HQ Pulse reward only when its cooldown is ready', () => {
+    useGameStore.setState({ cash: 100, energyCans: 0, hype: 40, lastHqPulseAt: 0, hqPulseStreak: 0 });
+    const reward = useGameStore.getState().claimHqPulse(100_000);
+    expect(reward).toBeGreaterThan(125);
+    expect(useGameStore.getState().cash).toBe(100 + reward);
+    expect(useGameStore.getState().energyCans).toBe(1);
+    expect(useGameStore.getState().claimHqPulse(120_000)).toBe(0);
+  });
+
+  it('tracks and claims daily objectives exactly once', () => {
+    useGameStore.getState().recordDailyObjective('train', 3);
+    expect(useGameStore.getState().dailyObjectives?.progress.train).toBe(3);
+    const before = useGameStore.getState().cash;
+    expect(useGameStore.getState().claimDailyObjective('train')).toBe(true);
+    expect(useGameStore.getState().cash).toBe(before + 750);
+    expect(useGameStore.getState().claimDailyObjective('train')).toBe(false);
+  });
+
   it('requires ownership before equipping wallpaper and saves purchased house finishes', () => {
     const store = useGameStore.getState();
     expect(store.setWallpaperStyle('cyberpunk')).toBe(false);
@@ -263,6 +291,13 @@ describe('useGameStore', () => {
     expect(refreshed.inspiredUntil).toBeGreaterThan(Date.now());
   });
 
+  it('turns a completed shop or park visit into an Inspired buff without direct player input', () => {
+    const starter = useGameStore.getState().roster[0];
+    useGameStore.setState({ roster: [starter] });
+    useGameStore.getState().applyActivityGains({ hype: 0, stats: {}, inspiredPlayers: [starter.id] });
+    expect(useGameStore.getState().roster[0].inspiredUntil).toBeGreaterThan(Date.now());
+  });
+
   it('keeps empire fields optional when hydrating a v1-era save', async () => {
     localStorage.setItem('esports_dynasty_save_v1', JSON.stringify({ version: 1, state: { cash: 777 } }));
     await useGameStore.persist.rehydrate();
@@ -270,6 +305,24 @@ describe('useGameStore', () => {
     expect(empire.districtTier).toBe(1);
     expect(empire.schedule).toEqual(['scrim', 'vod', 'gym', 'outdoor', 'rest']);
     expect(empire.branding.name).toBe('Dynasty Esports');
+    expect(empire.branches).toEqual([]);
+    expect(empire.seasonHistory).toEqual([]);
+  });
+
+  it('archives a completed World Championship and advances the calendar', () => {
+    const state = useGameStore.getState();
+    useGameStore.setState({
+      empire: {
+        ...state.empire,
+        seasonCalendar: { ...state.empire.seasonCalendar, year: 3, stage: 'worlds', stageWins: { spring: 1, msi: 0, summer: 1, worlds: 0 } },
+      },
+    });
+    const starterAge = useGameStore.getState().roster[0].age ?? 22;
+    useGameStore.getState().advanceSeasonStage(true);
+    const empire = useGameStore.getState().empire;
+    expect(empire.seasonCalendar).toMatchObject({ year: 4, stage: 'spring', trophies: 1 });
+    expect(empire.seasonHistory?.[0]).toMatchObject({ year: 3, worldChampion: true });
+    expect(useGameStore.getState().roster[0].age).toBe(starterAge + 1);
   });
 
   describe('Power Rankings and Tournament Circuit', () => {
@@ -309,6 +362,102 @@ describe('useGameStore', () => {
       expect(updatedPlayer.rating).toBeLessThan(initialRating);
       expect(updatedPlayer.losses).toBe(initialLosses + 1);
       expect(updatedPlayer.form[updatedPlayer.form.length - 1]).toBe('L');
+    });
+  });
+
+  describe('Backyard Sports, Cafeteria Catering, and Audio Engine', () => {
+    it('upgrades basketball court tiers through all 3 tiers with cost validation', () => {
+      useGameStore.setState({ cash: 50000, empire: { ...useGameStore.getState().empire, basketballTier: 1 } });
+      // Tier 1 -> 2 costs $8,500
+      expect(useGameStore.getState().upgradeBasketball()).toBe(true);
+      expect(useGameStore.getState().empire.basketballTier).toBe(2);
+      expect(useGameStore.getState().cash).toBe(50000 - 8500);
+
+      // Tier 2 -> 3 costs $32,000
+      expect(useGameStore.getState().upgradeBasketball()).toBe(true);
+      expect(useGameStore.getState().empire.basketballTier).toBe(3);
+      expect(useGameStore.getState().cash).toBe(50000 - 8500 - 32000);
+
+      // Max tier reached (tier 3 cannot be upgraded further)
+      expect(useGameStore.getState().upgradeBasketball()).toBe(false);
+      expect(useGameStore.getState().empire.basketballTier).toBe(3);
+    });
+
+    it('upgrades football turf field with accurate cost checks and perks', () => {
+      useGameStore.setState({ cash: 60000, empire: { ...useGameStore.getState().empire, footballTier: 1 } });
+      // Tier 1 -> 2 costs $10,000
+      expect(useGameStore.getState().upgradeFootball()).toBe(true);
+      expect(useGameStore.getState().empire.footballTier).toBe(2);
+      expect(useGameStore.getState().cash).toBe(50000);
+
+      // Insufficient funds check
+      useGameStore.setState({ cash: 1000 });
+      expect(useGameStore.getState().upgradeFootball()).toBe(false);
+      expect(useGameStore.getState().empire.footballTier).toBe(2);
+
+      // Fund and upgrade Tier 2 -> 3 costs $45,000
+      useGameStore.setState({ cash: 50000 });
+      expect(useGameStore.getState().upgradeFootball()).toBe(true);
+      expect(useGameStore.getState().empire.footballTier).toBe(3);
+      expect(useGameStore.getState().cash).toBe(5000);
+      expect(useGameStore.getState().upgradeFootball()).toBe(false);
+    });
+
+    it('manages daily cafeteria catering plans and applies nutrition buffs to training gains', () => {
+      useGameStore.setState({ cash: 20000, cateringPlan: 'standard' });
+      expect(useGameStore.getState().cateringPlan).toBe('standard');
+
+      // Switch to Brain Fuel Smoothies ($1,200)
+      expect(useGameStore.getState().setCateringPlan('brain_fuel')).toBe(true);
+      expect(useGameStore.getState().cateringPlan).toBe('brain_fuel');
+      expect(useGameStore.getState().cash).toBe(18800);
+
+      // Switch to Omega-3 ($2,800)
+      expect(useGameStore.getState().setCateringPlan('omega3')).toBe(true);
+      expect(useGameStore.getState().cateringPlan).toBe('omega3');
+      expect(useGameStore.getState().cash).toBe(16000);
+
+      // Apply training gains with Omega-3 active (+20% Aim multiplier)
+      const player = useGameStore.getState().roster[0];
+      const initialAim = player.stats.aim;
+      useGameStore.getState().applyActivityGains({
+        hype: 10,
+        stats: { [player.id]: { aim: 2, macro: 0, comms: 0, tiltResistance: 0 } },
+      });
+      const updatedPlayer = useGameStore.getState().roster.find(p => p.id === player.id)!;
+      expect(updatedPlayer.stats.aim).toBeGreaterThanOrEqual(initialAim);
+    });
+
+    it('toggles sound effects and persists mute state cleanly', () => {
+      const initialSound = useGameStore.getState().soundEnabled;
+      const toggled = useGameStore.getState().toggleSound();
+      expect(toggled).toBe(!initialSound);
+      expect(useGameStore.getState().soundEnabled).toBe(!initialSound);
+
+      // Toggle back
+      const restored = useGameStore.getState().toggleSound();
+      expect(restored).toBe(initialSound);
+    });
+
+    it('sets active tournament match for Penthouse TV dynamic broadcast', () => {
+      expect(useGameStore.getState().isTournamentUnderway).toBe(false);
+      expect(useGameStore.getState().activeTournamentMatch).toBeNull();
+
+      useGameStore.getState().setActiveTournamentMatch({
+        tournamentId: 'fps_masters',
+        tourneyName: 'Valorant Champions Tour',
+        stage: 'finals',
+        opponentTeam: useGameStore.getState().powerRankings[0],
+        playerScore: 2,
+        opponentScore: 1,
+        playByPlay: ['Round 1: Flawless entry on A site', 'Round 2: Dynasty clutches 1v2'],
+        isUnderway: true,
+      });
+
+      expect(useGameStore.getState().isTournamentUnderway).toBe(true);
+      expect(useGameStore.getState().activeTournamentMatch?.playerScore).toBe(2);
+      expect(useGameStore.getState().activeTournamentMatch?.opponentScore).toBe(1);
+      expect(useGameStore.getState().activeTournamentMatch?.stage).toBe('finals');
     });
   });
 });

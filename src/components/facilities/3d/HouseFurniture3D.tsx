@@ -3,9 +3,12 @@ import { useFrame } from '@react-three/fiber';
 import { Group, Mesh } from 'three';
 import { Facility, FacilityId } from '../../../core/types/facility.types';
 import { useGameStore } from '../../../core/store/useGameStore';
+import { HOUSE_STATIONS } from '../../../core/house/houseGeometry';
+import { EvolvingRig, RoomEquipmentUpgrade } from './EquipmentModels3D';
 
 interface HouseFurniture3DProps {
   facilities: Record<FacilityId, Facility>;
+  showRoof: boolean;
 }
 
 // -------------------------------------------------------------
@@ -24,7 +27,7 @@ function ConstructionZone({ x, z, w, d }: { x: number; z: number; w: number; d: 
       </mesh>
 
       {/* Wooden Cargo Pallet with Cardboard Gear Crates */}
-      <group position={[-0.8, 0, -0.6]}>
+      <group position={[-Math.min(0.8, w / 2 - 1), 0, -0.6]}>
         {/* Pallet base */}
         <mesh position={[0, 0.08, 0]} castShadow>
           <boxGeometry args={[1.5, 0.14, 1.3]} />
@@ -161,370 +164,6 @@ function ConstructionZone({ x, z, w, d }: { x: number; z: number; w: number; d: 
 
 // -------------------------------------------------------------
 // DETAILED SCRIM LAB GAMING BATTLESTATION
-// -------------------------------------------------------------
-function BattlestationRig({
-  x,
-  z,
-  upgraded = false,
-}: {
-  x: number;
-  z: number;
-  upgraded?: boolean;
-}) {
-  const fanRef = useRef<Group>(null);
-
-  // Subtle cooling fan rotation inside PC
-  useFrame(({ clock }) => {
-    if (fanRef.current) {
-      fanRef.current.rotation.z = clock.elapsedTime * 15;
-    }
-  });
-
-  return (
-    <group position={[x, 0, z]}>
-      {/* Carbon Fiber Desk Top */}
-      <mesh position={[0.72, 0.68, 0.48]} castShadow receiveShadow>
-        <boxGeometry args={[1.44, 0.07, 0.94]} />
-        <meshStandardMaterial
-          color="#0f172a"
-          roughness={0.35}
-          metalness={0.65}
-        />
-      </mesh>
-
-      {/* Desk Underglow RGB Strip */}
-      <mesh position={[0.72, 0.64, 0.94]}>
-        <boxGeometry args={[1.42, 0.015, 0.015]} />
-        <meshBasicMaterial color={upgraded ? '#a855f7' : '#06b6d4'} />
-      </mesh>
-
-      {/* Sleek K-Frame Angular Metal Legs */}
-      <mesh position={[0.1, 0.34, 0.48]} castShadow>
-        <boxGeometry args={[0.08, 0.66, 0.8]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.3} />
-      </mesh>
-      <mesh position={[1.34, 0.34, 0.48]} castShadow>
-        <boxGeometry args={[0.08, 0.66, 0.8]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.3} />
-      </mesh>
-      {/* Lower Crossbar Stretcher */}
-      <mesh position={[0.72, 0.16, 0.2]}>
-        <boxGeometry args={[1.2, 0.04, 0.04]} />
-        <meshStandardMaterial color="#0f172a" metalness={0.85} roughness={0.3} />
-      </mesh>
-
-      {/* Dual Curved Ultrawide Monitors on Articulated Arms */}
-      {/* Center Main High-Refresh Esports Monitor */}
-      <group position={[0.62, 0.72, 0.2]}>
-        {/* Heavy-Duty Metal Gas-Spring Arm */}
-        <mesh position={[0, 0.22, -0.05]} castShadow>
-          <cylinderGeometry args={[0.02, 0.025, 0.42, 8]} />
-          <meshStandardMaterial color="#334155" metalness={0.85} roughness={0.25} />
-        </mesh>
-        {/* Monitor Bezel */}
-        <mesh position={[0, 0.45, 0]} castShadow>
-          <boxGeometry args={[0.82, 0.48, 0.04]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.7} />
-        </mesh>
-        {/* Esports Gameplay Display Screen */}
-        <mesh position={[0, 0.45, 0.022]}>
-          <planeGeometry args={[0.78, 0.44]} />
-          <meshStandardMaterial
-            color={upgraded ? '#3b0764' : '#032030'}
-            roughness={0.2}
-            emissive={upgraded ? '#581c87' : '#083344'}
-            emissiveIntensity={0.65}
-          />
-        </mesh>
-
-        {/* --- IN-GAME FPS HUD GRAPHICS --- */}
-        {/* Arena corridor 3D perspective backdrop */}
-        <mesh position={[0, 0.42, 0.023]}>
-          <planeGeometry args={[0.74, 0.32]} />
-          <meshBasicMaterial color={upgraded ? '#2e1065' : '#0f172a'} />
-        </mesh>
-        {/* Tactical arena floor grid */}
-        <mesh position={[0, 0.31, 0.024]}>
-          <planeGeometry args={[0.74, 0.12]} />
-          <meshBasicMaterial color={upgraded ? '#3b0764' : '#1e293b'} />
-        </mesh>
-        {/* First-person weapon viewmodel on right */}
-        <mesh position={[0.22, 0.32, 0.025]} rotation={[0, 0, -0.2]}>
-          <boxGeometry args={[0.18, 0.06, 0.005]} />
-          <meshBasicMaterial color="#020617" />
-        </mesh>
-        <mesh position={[0.26, 0.35, 0.026]}>
-          <boxGeometry args={[0.04, 0.015, 0.005]} />
-          <meshBasicMaterial color="#06b6d4" />
-        </mesh>
-
-        {/* Center Crosshair with 4 tick reticles */}
-        <group position={[0, 0.45, 0.026]}>
-          <mesh position={[0, 0, 0]}>
-            <circleGeometry args={[0.006, 8]} />
-            <meshBasicMaterial color="#34d399" />
-          </mesh>
-          <mesh position={[-0.018, 0, 0]}>
-            <planeGeometry args={[0.012, 0.003]} />
-            <meshBasicMaterial color="#34d399" />
-          </mesh>
-          <mesh position={[0.018, 0, 0]}>
-            <planeGeometry args={[0.012, 0.003]} />
-            <meshBasicMaterial color="#34d399" />
-          </mesh>
-          <mesh position={[0, 0.018, 0]}>
-            <planeGeometry args={[0.003, 0.012]} />
-            <meshBasicMaterial color="#34d399" />
-          </mesh>
-          <mesh position={[0, -0.018, 0]}>
-            <planeGeometry args={[0.003, 0.012]} />
-            <meshBasicMaterial color="#34d399" />
-          </mesh>
-        </group>
-
-        {/* Minimap Radar UI on Top-Left with scan ping */}
-        <group position={[-0.26, 0.55, 0.025]}>
-          <mesh>
-            <circleGeometry args={[0.065, 16]} />
-            <meshBasicMaterial color="#022c22" />
-          </mesh>
-          <mesh>
-            <ringGeometry args={[0.062, 0.065, 16]} />
-            <meshBasicMaterial color="#10b981" />
-          </mesh>
-          <mesh position={[0.015, 0.01, 0.001]}>
-            <circleGeometry args={[0.009, 8]} />
-            <meshBasicMaterial color="#06b6d4" />
-          </mesh>
-          <mesh position={[-0.02, -0.015, 0.001]}>
-            <circleGeometry args={[0.008, 8]} />
-            <meshBasicMaterial color="#ef4444" />
-          </mesh>
-        </group>
-
-        {/* Top Center Round Timer & Score: 12 - 10 */}
-        <group position={[0, 0.61, 0.025]}>
-          <mesh position={[0, 0, 0]}>
-            <planeGeometry args={[0.18, 0.04]} />
-            <meshBasicMaterial color="#020617" />
-          </mesh>
-          <mesh position={[-0.04, 0, 0.001]}>
-            <planeGeometry args={[0.045, 0.02]} />
-            <meshBasicMaterial color="#06b6d4" />
-          </mesh>
-          <mesh position={[0.04, 0, 0.001]}>
-            <planeGeometry args={[0.045, 0.02]} />
-            <meshBasicMaterial color="#ef4444" />
-          </mesh>
-        </group>
-
-        {/* Top-Right Killfeed Entry */}
-        <group position={[0.24, 0.61, 0.025]}>
-          <mesh position={[0, 0, 0]}>
-            <planeGeometry args={[0.16, 0.03]} />
-            <meshBasicMaterial color="#0f172a" />
-          </mesh>
-          <mesh position={[-0.04, 0, 0.001]}>
-            <planeGeometry args={[0.05, 0.015]} />
-            <meshBasicMaterial color="#06b6d4" />
-          </mesh>
-          <mesh position={[0.04, 0, 0.001]}>
-            <planeGeometry args={[0.04, 0.015]} />
-            <meshBasicMaterial color="#ef4444" />
-          </mesh>
-        </group>
-
-        {/* Bottom-Left Health & Armor Bars: 100 HP | 50 AP */}
-        <group position={[-0.24, 0.28, 0.025]}>
-          <mesh position={[0, 0.015, 0]}>
-            <planeGeometry args={[0.18, 0.018]} />
-            <meshBasicMaterial color="#14532d" />
-          </mesh>
-          <mesh position={[-0.01, 0.015, 0.001]}>
-            <planeGeometry args={[0.16, 0.014]} />
-            <meshBasicMaterial color="#22c55e" />
-          </mesh>
-          <mesh position={[0, -0.01, 0]}>
-            <planeGeometry args={[0.18, 0.014]} />
-            <meshBasicMaterial color="#0369a1" />
-          </mesh>
-          <mesh position={[-0.03, -0.01, 0.001]}>
-            <planeGeometry args={[0.12, 0.01]} />
-            <meshBasicMaterial color="#38bdf8" />
-          </mesh>
-        </group>
-
-        {/* Bottom-Right Ammo Counter: 30 / 90 */}
-        <group position={[0.26, 0.28, 0.025]}>
-          <mesh position={[0, 0, 0]}>
-            <planeGeometry args={[0.12, 0.028]} />
-            <meshBasicMaterial color="#020617" />
-          </mesh>
-          <mesh position={[-0.02, 0, 0.001]}>
-            <planeGeometry args={[0.04, 0.016]} />
-            <meshBasicMaterial color="#f8fafc" />
-          </mesh>
-          <mesh position={[0.03, 0, 0.001]}>
-            <planeGeometry args={[0.03, 0.012]} />
-            <meshBasicMaterial color="#94a3b8" />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Secondary Angled Strategy / Chat Monitor */}
-      <group position={[1.18, 0.72, 0.26]} rotation={[0, -0.42, 0]}>
-        <mesh position={[0, 0.42, 0]} castShadow>
-          <boxGeometry args={[0.55, 0.44, 0.04]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.7} />
-        </mesh>
-        <mesh position={[0, 0.42, 0.022]}>
-          <planeGeometry args={[0.52, 0.41]} />
-          <meshStandardMaterial
-            color="#1e1b4b"
-            emissive="#4338ca"
-            emissiveIntensity={0.4}
-            roughness={0.3}
-          />
-        </mesh>
-        {/* Discord Voice & Team Comms Bubbles */}
-        <group position={[0, 0.42, 0.024]}>
-          {[-0.14, -0.05, 0.04, 0.13].map((vy, i) => (
-            <group key={i} position={[-0.16, vy, 0]}>
-              <mesh>
-                <circleGeometry args={[0.025, 12]} />
-                <meshBasicMaterial color={i === 0 ? '#22c55e' : '#475569'} />
-              </mesh>
-              <mesh position={[0.12, 0, 0]}>
-                <planeGeometry args={[0.16, 0.015]} />
-                <meshBasicMaterial color={i === 0 ? '#38bdf8' : '#64748b'} />
-              </mesh>
-            </group>
-          ))}
-          {/* Tactical map telemetry mini graph on lower half */}
-          <mesh position={[0, -0.12, 0]}>
-            <planeGeometry args={[0.42, 0.1]} />
-            <meshBasicMaterial color="#090d16" />
-          </mesh>
-          <mesh position={[-0.08, -0.12, 0.001]}>
-            <planeGeometry args={[0.18, 0.04]} />
-            <meshBasicMaterial color="#06b6d4" />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Extended Gaming Desk Pad */}
-      <mesh position={[0.72, 0.72, 0.6]}>
-        <boxGeometry args={[0.9, 0.01, 0.46]} />
-        <meshStandardMaterial color="#020617" roughness={0.9} />
-      </mesh>
-
-      {/* Mechanical RGB Keyboard with Keycap Rows */}
-      <mesh position={[0.58, 0.732, 0.65]}>
-        <boxGeometry args={[0.42, 0.018, 0.16]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.4} metalness={0.5} />
-      </mesh>
-      <mesh position={[0.58, 0.742, 0.65]}>
-        <boxGeometry args={[0.38, 0.008, 0.13]} />
-        <meshBasicMaterial color={upgraded ? '#c084fc' : '#22d3ee'} />
-      </mesh>
-
-      {/* Ergonomic Optical Gaming Mouse */}
-      <mesh position={[0.94, 0.732, 0.65]}>
-        <boxGeometry args={[0.09, 0.024, 0.14]} />
-        <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
-      </mesh>
-
-      {/* Liquid-Cooled Gaming PC Tower */}
-      <group position={[0.15, 0.72, 0.28]}>
-        {/* Chassis */}
-        <mesh position={[0, 0.3, 0]} castShadow>
-          <boxGeometry args={[0.24, 0.58, 0.54]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.8} />
-        </mesh>
-        {/* Tempered Glass Side Panel */}
-        <mesh position={[0.125, 0.3, 0]}>
-          <planeGeometry args={[0.5, 0.52]} />
-          <meshPhysicalMaterial
-            color="#38bdf8"
-            transparent
-            opacity={0.3}
-            roughness={0.1}
-            metalness={0.9}
-            transmission={0.8}
-          />
-        </mesh>
-        {/* Internal Illuminated GPU */}
-        <mesh position={[0, 0.22, 0]}>
-          <boxGeometry args={[0.12, 0.08, 0.32]} />
-          <meshStandardMaterial color="#06b6d4" roughness={0.4} />
-        </mesh>
-        {/* Glowing RAM RGB Bars */}
-        <mesh position={[-0.04, 0.42, -0.06]}>
-          <boxGeometry args={[0.02, 0.1, 0.08]} />
-          <meshBasicMaterial color="#ec4899" />
-        </mesh>
-        {/* Dual Front Radiator Intake Fans */}
-        <group ref={fanRef} position={[0, 0.32, 0.27]}>
-          <mesh>
-            <circleGeometry args={[0.09, 8]} />
-            <meshBasicMaterial color={upgraded ? '#a855f7' : '#06b6d4'} />
-          </mesh>
-        </group>
-      </group>
-
-      {/* Ergonomic Racing Gaming Chair */}
-      <group position={[0.74, 0, 1.2]}>
-        {/* 5-Star Wheeled Base with Dual Casters */}
-        <mesh position={[0, 0.06, 0]}>
-          <cylinderGeometry args={[0.26, 0.26, 0.04, 5]} />
-          <meshStandardMaterial color="#0f172a" metalness={0.9} roughness={0.2} />
-        </mesh>
-        {/* Hydraulic Gas-Lift Piston */}
-        <mesh position={[0, 0.24, 0]}>
-          <cylinderGeometry args={[0.04, 0.04, 0.34, 8]} />
-          <meshStandardMaterial color="#64748b" metalness={0.95} roughness={0.1} />
-        </mesh>
-        {/* Bucket Seat Base Cushion with Side Bolsters */}
-        <mesh position={[0, 0.44, 0]} castShadow>
-          <boxGeometry args={[0.5, 0.1, 0.48]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.7} />
-        </mesh>
-        {/* Contrast Trim Piping */}
-        <mesh position={[0, 0.44, 0.23]}>
-          <boxGeometry args={[0.48, 0.08, 0.03]} />
-          <meshStandardMaterial color="#06b6d4" roughness={0.4} />
-        </mesh>
-        {/* Tall Racing Backrest with Wing Bolsters */}
-        <mesh position={[0, 0.82, 0.22]} rotation={[-0.1, 0, 0]} castShadow>
-          <boxGeometry args={[0.48, 0.68, 0.09]} />
-          <meshStandardMaterial color="#0f172a" roughness={0.7} />
-        </mesh>
-        {/* Harness Cutout Accents */}
-        <mesh position={[0, 1.05, 0.25]} rotation={[-0.1, 0, 0]}>
-          <boxGeometry args={[0.2, 0.06, 0.1]} />
-          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.8} />
-        </mesh>
-        {/* Memory Foam Lumbar Cushion */}
-        <mesh position={[0, 0.6, 0.18]}>
-          <boxGeometry args={[0.34, 0.14, 0.07]} />
-          <meshStandardMaterial color="#06b6d4" roughness={0.6} />
-        </mesh>
-        {/* 3D Padded Armrests */}
-        <mesh position={[-0.27, 0.58, 0.05]}>
-          <boxGeometry args={[0.07, 0.26, 0.22]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.5} />
-        </mesh>
-        <mesh position={[0.27, 0.58, 0.05]}>
-          <boxGeometry args={[0.07, 0.26, 0.22]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.5} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-// -------------------------------------------------------------
-// STREAM STUDIO (PODS, LIGHTING, LOUNGE SOFA)
 // -------------------------------------------------------------
 function StreamStudioContent({ level }: { level: number }) {
   return (
@@ -665,7 +304,7 @@ function StreamStudioContent({ level }: { level: number }) {
       })}
 
       {/* Studio Lounge Sofa (Break Spot at x=9.4-7.4=2.0, z=4.55-0.4=4.15) */}
-      <group position={[2.6, 0, 4.15]}>
+      <group position={[2.3, 0, 4.55]}>
         {/* Main Deep Sofa Cushion */}
         <mesh position={[0.9, 0.32, 0]} castShadow>
           <boxGeometry args={[2.5, 0.38, 0.9]} />
@@ -696,9 +335,9 @@ function StreamStudioContent({ level }: { level: number }) {
         </mesh>
 
         {/* Low Minimalist Glass-Top Coffee Table */}
-        <group position={[0.9, 0, 0.85]}>
+        <group position={[-1.05, 0, 0]}>
           <mesh position={[0, 0.22, 0]} castShadow>
-            <boxGeometry args={[1.5, 0.05, 0.55]} />
+            <boxGeometry args={[0.75, 0.05, 0.55]} />
             <meshPhysicalMaterial
               color="#e0f2fe"
               transparent
@@ -741,8 +380,8 @@ function AnalystRoomContent({ level }: { level: number }) {
         {/* 6 High-Res Tactical Display Panels */}
         {[-1.2, 0, 1.2].flatMap((pz) =>
           [-0.5, 0.5].map((py) => (
-            <mesh key={`${pz}-${py}`} position={[0.045, py, pz]}>
-              <planeGeometry args={[0.01, 0.94]} />
+            <mesh key={`${pz}-${py}`} position={[0.045, py, pz]} rotation={[0, Math.PI / 2, 0]}>
+              <planeGeometry args={[1.1, 0.94]} />
               <meshStandardMaterial
                 color="#0369a1"
                 emissive="#0284c7"
@@ -755,10 +394,10 @@ function AnalystRoomContent({ level }: { level: number }) {
       </group>
 
       {/* Long Executive Walnut Conference War Table */}
-      <group position={[2.9, 0, 2.9]}>
+      <group position={[2.95, 0, 2.65]}>
         {/* Boat-Shaped Table Top */}
         <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
-          <boxGeometry args={[3.2, 0.08, 1.65]} />
+          <boxGeometry args={[2.7, 0.08, 1.5]} />
           <meshStandardMaterial color="#451a03" roughness={0.5} metalness={0.2} />
         </mesh>
         {/* Brushed-Metal Inset Power / Cable Trough */}
@@ -798,7 +437,7 @@ function AnalystRoomContent({ level }: { level: number }) {
       {/* Executive Mesh Swivel Chairs */}
       {/* 3 Near Chairs (Facing War Table) */}
       {[2.15, 3.05, 3.95].map((nearX, idx) => (
-        <group key={idx} position={[nearX, 0, 4.3]}>
+        <group key={idx} position={[nearX - 0.16, 0, 3.8]}>
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.04, 5]} />
             <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
@@ -821,7 +460,7 @@ function AnalystRoomContent({ level }: { level: number }) {
 
       {/* Head Chairs (East and West) */}
       {level >= 3 && (
-        <group position={[4.9, 0, 2.9]} rotation={[0, -Math.PI / 2, 0]}>
+        <group position={[4.67, 0, 2.62]} rotation={[0, -Math.PI / 2, 0]}>
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.04, 5]} />
             <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
@@ -838,7 +477,7 @@ function AnalystRoomContent({ level }: { level: number }) {
       )}
 
       {level >= 5 && (
-        <group position={[0.9, 0, 2.9]} rotation={[0, Math.PI / 2, 0]}>
+        <group position={[1.27, 0, 2.62]} rotation={[0, Math.PI / 2, 0]}>
           <mesh position={[0, 0.06, 0]}>
             <cylinderGeometry args={[0.22, 0.22, 0.04, 5]} />
             <meshStandardMaterial color="#cbd5e1" metalness={0.9} roughness={0.2} />
@@ -975,18 +614,18 @@ function GymContent({ level }: { level: number }) {
           <group ref={barbellRef} position={[0, 1.15, -0.55]}>
             {/* Chrome Bar */}
             <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-              <cylinderGeometry args={[0.02, 0.02, 1.8, 12]} />
+              <cylinderGeometry args={[0.02, 0.02, 1.1, 12]} />
               <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.1} />
             </mesh>
             {/* 45lb Olympic Red Bumper Plates */}
-            {[-0.72, 0.72].map((px, i) => (
+            {[-0.47, 0.47].map((px, i) => (
               <mesh key={i} position={[px, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
                 <cylinderGeometry args={[0.22, 0.22, 0.06, 16]} />
                 <meshStandardMaterial color="#dc2626" roughness={0.4} />
               </mesh>
             ))}
             {/* 35lb Olympic Blue Bumper Plates */}
-            {[-0.8, 0.8].map((px, i) => (
+            {[-0.52, 0.52].map((px, i) => (
               <mesh key={i} position={[px, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
                 <cylinderGeometry args={[0.18, 0.18, 0.05, 16]} />
                 <meshStandardMaterial color="#2563eb" roughness={0.4} />
@@ -1044,8 +683,8 @@ function GymContent({ level }: { level: number }) {
 function MerchContent({ level }: { level: number }) {
   return (
     <group position={[11.0, 0, 7.5]}>
-      {/* POS Checkout Counter with Glass Showcase */}
-      <group position={[1.3, 0, 5.1]}>
+      {/* 1. POS Checkout Counter with Glass Showcase */}
+      <group position={[4.6, 0, 5.1]}>
         {/* Counter Body */}
         <mesh position={[0, 0.48, 0]} castShadow>
           <boxGeometry args={[1.5, 0.96, 0.65]} />
@@ -1073,16 +712,21 @@ function MerchContent({ level }: { level: number }) {
             <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
           </mesh>
         </group>
+        {/* Branded Shopping Bags on Counter */}
+        <mesh position={[-0.45, 1.05, 0]} castShadow>
+          <boxGeometry args={[0.22, 0.26, 0.14]} />
+          <meshStandardMaterial color="#0284c7" roughness={0.5} />
+        </mesh>
       </group>
 
-      {/* Industrial Tubular Clothing Racks (Levels 1, 3, 6) */}
+      {/* 2. Industrial Tubular Clothing Racks (Levels 1, 3, 6) */}
       {[0, 1, 2].map((k) => {
         const minLevel = [1, 3, 6][k];
         if (level < minLevel) return null;
-        const rz = 0.5 + 1.8 * k;
+        const rz = 0.5 + 1.45 * k;
 
         return (
-          <group key={k} position={[1.2, 0, rz]}>
+          <group key={k} position={[4.6, 0, rz + 0.4]}>
             {/* Matte Black Steel Rack Frame */}
             <mesh position={[0, 0.04, 0]}>
               <boxGeometry args={[1.6, 0.06, 0.5]} />
@@ -1114,6 +758,316 @@ function MerchContent({ level }: { level: number }) {
           </group>
         );
       })}
+
+      {/* 3. Central Folded T-Shirt & Deskmat Display Table */}
+      <group position={[2.2, 0, 2.4]}>
+        <mesh position={[0, 0.42, 0]} castShadow>
+          <boxGeometry args={[1.4, 0.84, 1.0]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.86, 0]} castShadow>
+          <boxGeometry args={[1.45, 0.05, 1.05]} />
+          <meshStandardMaterial color="#e2e8f0" roughness={0.4} />
+        </mesh>
+        {/* Neatly Folded Stacks of Dynasty Apparel */}
+        {[-0.4, 0, 0.4].map((tx, i) => (
+          <group key={i} position={[tx, 0.94, 0]}>
+            <mesh castShadow>
+              <boxGeometry args={[0.3, 0.12, 0.38]} />
+              <meshStandardMaterial color={i === 0 ? '#0284c7' : i === 1 ? '#0f172a' : '#f59e0b'} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 4. Limited Edition Esports Tournament Sneaker Display Cube */}
+      <group position={[1.8, 0, 4.2]}>
+        <mesh position={[0, 0.35, 0]} castShadow>
+          <boxGeometry args={[0.55, 0.7, 0.55]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.4} metalness={0.6} />
+        </mesh>
+        <mesh position={[0, 0.85, 0]}>
+          <boxGeometry args={[0.5, 0.35, 0.5]} />
+          <meshPhysicalMaterial color="#bae6fd" transparent opacity={0.3} transmission={0.9} roughness={0.05} />
+        </mesh>
+        <mesh position={[-0.08, 0.74, 0]} rotation={[0, 0.3, 0]}>
+          <boxGeometry args={[0.09, 0.08, 0.22]} />
+          <meshStandardMaterial color="#f43f5e" roughness={0.5} />
+        </mesh>
+        <mesh position={[0.08, 0.74, 0]} rotation={[0, -0.3, 0]}>
+          <boxGeometry args={[0.09, 0.08, 0.22]} />
+          <meshStandardMaterial color="#f43f5e" roughness={0.5} />
+        </mesh>
+        <pointLight position={[0, 0.85, 0]} color="#f43f5e" intensity={1.5} distance={2.5} />
+      </group>
+
+      {/* 5. Snapback Cap Display Wall Shelf */}
+      <group position={[0.1, 1.0, 2.5]}>
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[0.06, 0.04, 1.8]} />
+          <meshStandardMaterial color="#cbd5e1" metalness={0.8} />
+        </mesh>
+        {[-0.6, -0.2, 0.2, 0.6].map((cz, i) => (
+          <group key={i} position={[0.08, 0.08, cz]}>
+            <mesh>
+              <sphereGeometry args={[0.1, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+              <meshStandardMaterial color={i % 2 === 0 ? '#0284c7' : '#0f172a'} />
+            </mesh>
+            <mesh position={[0.04, 0, 0]} rotation={[0, 0, -0.15]}>
+              <boxGeometry args={[0.08, 0.02, 0.12]} />
+              <meshStandardMaterial color={i % 2 === 0 ? '#0284c7' : '#0f172a'} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+// -------------------------------------------------------------
+// ESPORTS CAFETERIA & NUTRITION BISTRO
+// -------------------------------------------------------------
+function CafeteriaContent({ level: _level }: { level: number }) {
+  return (
+    <group position={[-5.4, 0, 7.5]}>
+      {/* 1. Hot Food Serving Buffet Counter & Steam Table */}
+      <group position={[2.8, 0, 1.0]}>
+        <mesh position={[0, 0.45, 0]} castShadow>
+          <boxGeometry args={[3.0, 0.9, 0.65]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.92, 0]} castShadow>
+          <boxGeometry args={[3.05, 0.08, 0.72]} />
+          <meshStandardMaterial color="#fef3c7" roughness={0.4} metalness={0.1} />
+        </mesh>
+        {/* Sneeze Guard Glass Canopy */}
+        <group position={[0, 1.08, 0.28]}>
+          <mesh>
+            <boxGeometry args={[2.9, 0.35, 0.02]} />
+            <meshPhysicalMaterial color="#bae6fd" transparent opacity={0.35} transmission={0.8} />
+          </mesh>
+          {[-1.4, 1.4].map((sx, i) => (
+            <mesh key={i} position={[sx, -0.08, 0]}>
+              <cylinderGeometry args={[0.015, 0.015, 0.36, 8]} />
+              <meshStandardMaterial color="#cbd5e1" metalness={0.9} />
+            </mesh>
+          ))}
+        </group>
+        {/* 4 Heated Gastronorm Steam Pans with Food */}
+        {[
+          { x: -1.05, foodColor: '#facc15' },
+          { x: -0.35, foodColor: '#b45309' },
+          { x: 0.35, foodColor: '#16a34a' },
+          { x: 1.05, foodColor: '#dc2626' },
+        ].map((pan, idx) => (
+          <group key={idx} position={[pan.x, 0.94, -0.05]}>
+            <mesh>
+              <boxGeometry args={[0.55, 0.04, 0.48]} />
+              <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.2} />
+            </mesh>
+            <mesh position={[0, 0.02, 0]}>
+              <boxGeometry args={[0.48, 0.02, 0.42]} />
+              <meshStandardMaterial color={pan.foodColor} roughness={0.7} />
+            </mesh>
+          </group>
+        ))}
+        {/* Overhead Heating Heat Lamp Warm Glow */}
+        <pointLight position={[0, 1.35, 0]} color="#f97316" intensity={2.5} distance={4} />
+        {/* Digital Menu Display Screen above Counter */}
+        <mesh position={[0, 1.85, 0.3]}>
+          <boxGeometry args={[2.4, 0.42, 0.04]} />
+          <meshStandardMaterial color="#020617" roughness={0.3} metalness={0.8} />
+        </mesh>
+        <mesh position={[0, 1.85, 0.322]}>
+          <planeGeometry args={[2.3, 0.36]} />
+          <meshBasicMaterial color="#0284c7" />
+        </mesh>
+      </group>
+
+      {/* 2. Barista Espresso Machine & Hydration Fountain Station */}
+      <group position={[0.7, 0, 1.0]}>
+        <mesh position={[0, 0.45, 0]} castShadow>
+          <boxGeometry args={[1.2, 0.9, 0.65]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.92, 0]} castShadow>
+          <boxGeometry args={[1.25, 0.08, 0.72]} />
+          <meshStandardMaterial color="#fef3c7" roughness={0.4} />
+        </mesh>
+        {/* Italian Commercial Espresso Machine */}
+        <group position={[-0.2, 1.15, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.52, 0.38, 0.38]} />
+            <meshStandardMaterial color="#dc2626" metalness={0.7} roughness={0.25} />
+          </mesh>
+          <mesh position={[0, 0, 0.195]}>
+            <planeGeometry args={[0.48, 0.32]} />
+            <meshStandardMaterial color="#cbd5e1" metalness={0.95} roughness={0.1} />
+          </mesh>
+          {[-0.14, 0, 0.14].map((cx, i) => (
+            <mesh key={i} position={[cx, 0.22, 0]}>
+              <cylinderGeometry args={[0.04, 0.03, 0.07, 8]} />
+              <meshStandardMaterial color="#f8fafc" />
+            </mesh>
+          ))}
+        </group>
+        {/* Energy Drink & Soda Dispenser */}
+        <group position={[0.35, 1.2, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.34, 0.48, 0.32]} />
+            <meshStandardMaterial color="#0f172a" metalness={0.8} />
+          </mesh>
+          <mesh position={[0, -0.05, 0.162]}>
+            <boxGeometry args={[0.26, 0.12, 0.02]} />
+            <meshBasicMaterial color="#06b6d4" />
+          </mesh>
+        </group>
+      </group>
+
+      {/* 3. Fresh Salad & Fruit Island Bar */}
+      <group position={[4.4, 0, 2.4]}>
+        <mesh position={[0, 0.45, 0]} castShadow>
+          <boxGeometry args={[0.9, 0.9, 1.6]} />
+          <meshStandardMaterial color="#334155" roughness={0.7} />
+        </mesh>
+        <mesh position={[0, 0.92, 0]} castShadow>
+          <boxGeometry args={[0.96, 0.08, 1.66]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} metalness={0.2} />
+        </mesh>
+        {[-0.45, 0, 0.45].map((bz, i) => (
+          <group key={i} position={[0, 0.98, bz]}>
+            <mesh castShadow>
+              <cylinderGeometry args={[0.18, 0.12, 0.09, 12]} />
+              <meshStandardMaterial color="#f1f5f9" roughness={0.3} />
+            </mesh>
+            <mesh position={[0, 0.04, 0]}>
+              <sphereGeometry args={[0.14, 8, 8, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
+              <meshStandardMaterial color={i === 0 ? '#15803d' : i === 1 ? '#ef4444' : '#f59e0b'} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 4. Dining Booth Seating along West Wall */}
+      <group position={[0.9, 0, 4.25]}>
+        <mesh position={[-0.42, 0.6, 0]} castShadow>
+          <boxGeometry args={[0.18, 0.65, 1.8]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.6} />
+        </mesh>
+        <mesh position={[-0.15, 0.28, 0]} castShadow>
+          <boxGeometry args={[0.42, 0.16, 1.8]} />
+          <meshStandardMaterial color="#0f172a" roughness={0.7} />
+        </mesh>
+        <mesh position={[0.38, 0.42, 0]} castShadow>
+          <boxGeometry args={[0.55, 0.06, 1.6]} />
+          <meshStandardMaterial color="#d97706" roughness={0.6} />
+        </mesh>
+        <mesh position={[0.38, 0.2, 0]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.4, 8]} />
+          <meshStandardMaterial color="#334155" />
+        </mesh>
+      </group>
+
+      {/* 5. Center Dining Table (Exact Station for cafeteria_meal_table at x = -3.0, z = 11.6 -> local [2.4, 0, 4.1]) */}
+      <group position={[2.4, 0, 4.1]}>
+        <mesh position={[0, 0.42, 0]} castShadow>
+          <cylinderGeometry args={[0.62, 0.62, 0.06, 20]} />
+          <meshStandardMaterial color="#d97706" roughness={0.65} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]}>
+          <cylinderGeometry args={[0.07, 0.14, 0.4, 12]} />
+          <meshStandardMaterial color="#0f172a" metalness={0.8} />
+        </mesh>
+        {/* Food Tray on Table with Burger, Fries & Drink */}
+        <group position={[0, 0.46, 0]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.42, 0.02, 0.32]} />
+            <meshStandardMaterial color="#b91c1c" roughness={0.5} />
+          </mesh>
+          <mesh position={[-0.08, 0.04, 0]} castShadow>
+            <cylinderGeometry args={[0.065, 0.065, 0.06, 12]} />
+            <meshStandardMaterial color="#78350f" roughness={0.8} />
+          </mesh>
+          <mesh position={[0.12, 0.07, -0.06]} castShadow>
+            <cylinderGeometry args={[0.035, 0.028, 0.12, 10]} />
+            <meshStandardMaterial color="#38bdf8" transparent opacity={0.8} />
+          </mesh>
+        </group>
+        {/* Molded Modern Dining Chairs */}
+        {[-0.7, 0.7].map((cx, i) => (
+          <group key={i} position={[cx, 0, 0]} rotation={[0, i === 0 ? Math.PI / 2 : -Math.PI / 2, 0]}>
+            <mesh position={[0, 0.24, 0]} castShadow>
+              <boxGeometry args={[0.42, 0.05, 0.42]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0.48, -0.19]} castShadow>
+              <boxGeometry args={[0.42, 0.45, 0.05]} />
+              <meshStandardMaterial color="#f8fafc" roughness={0.4} />
+            </mesh>
+            {[-0.16, 0.16].map((lx, j) => (
+              <mesh key={j} position={[lx, 0.12, 0]}>
+                <cylinderGeometry args={[0.02, 0.015, 0.24, 6]} />
+                <meshStandardMaterial color="#0f172a" />
+              </mesh>
+            ))}
+          </group>
+        ))}
+      </group>
+
+      {/* 6. East Dining Table at [4.2, 0, 4.1] */}
+      <group position={[4.2, 0, 4.1]}>
+        <mesh position={[0, 0.42, 0]} castShadow>
+          <cylinderGeometry args={[0.55, 0.55, 0.06, 16]} />
+          <meshStandardMaterial color="#d97706" roughness={0.65} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]}>
+          <cylinderGeometry args={[0.06, 0.12, 0.4, 10]} />
+          <meshStandardMaterial color="#0f172a" />
+        </mesh>
+        <mesh position={[0, 0.48, 0]}>
+          <cylinderGeometry args={[0.1, 0.06, 0.07, 10]} />
+          <meshStandardMaterial color="#16a34a" />
+        </mesh>
+        {[-0.6, 0.6].map((cx, i) => (
+          <mesh key={i} position={[cx, 0.24, 0]} castShadow>
+            <boxGeometry args={[0.38, 0.05, 0.38]} />
+            <meshStandardMaterial color="#f8fafc" />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 7. Waste & Tray Return Sorting Station */}
+      <group position={[4.4, 0, 5.2]}>
+        <mesh position={[0, 0.48, 0]} castShadow>
+          <boxGeometry args={[0.85, 0.96, 0.65]} />
+          <meshStandardMaterial color="#1e293b" roughness={0.7} />
+        </mesh>
+        {[-0.26, 0, 0.26].map((bx, i) => (
+          <mesh key={i} position={[bx, 0.97, 0]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.02, 10]} />
+            <meshStandardMaterial color={i === 0 ? '#0284c7' : i === 1 ? '#16a34a' : '#0f172a'} />
+          </mesh>
+        ))}
+      </group>
+
+      {/* 8. Lush Indoor Tropical Plant in Ceramic Planter */}
+      <group position={[0.5, 0, 5.2]}>
+        <mesh position={[0, 0.26, 0]} castShadow>
+          <cylinderGeometry args={[0.26, 0.2, 0.52, 12]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.3} />
+        </mesh>
+        <mesh position={[0, 0.75, 0]} castShadow>
+          <sphereGeometry args={[0.36, 10, 8]} />
+          <meshStandardMaterial color="#15803d" roughness={0.9} />
+        </mesh>
+        <mesh position={[0.1, 0.95, -0.05]} castShadow>
+          <sphereGeometry args={[0.24, 8, 6]} />
+          <meshStandardMaterial color="#22c55e" roughness={0.9} />
+        </mesh>
+      </group>
+
+      {/* Warm Ambient Dining Glow */}
+      <pointLight position={[2.6, 2.2, 3.5]} color="#fef3c7" intensity={7} distance={8} />
     </group>
   );
 }
@@ -1127,7 +1081,7 @@ function HallwayContent() {
   return (
     <group position={[0, 0, 0]}>
       {/* Upgradable Indoor Team Lounge Big Screen TV & Esports Entertainment Wall */}
-      <group position={[6.4, 0, 6.16]}>
+      <group position={[9.6, 0, 6.02]}>
         {/* TV Wall Mount Chassis */}
         <mesh position={[0, 1.45, 0]} castShadow>
           <boxGeometry
@@ -1263,11 +1217,22 @@ function HallwayContent() {
 }
 
 // -------------------------------------------------------------
+// MULTI-TITLE CHAMPIONSHIP ESPORTS ARENA WING
+// -------------------------------------------------------------
+function ChampionshipArenaContent({ level }: { level: number }) {
+  return <group>
+    {HOUSE_STATIONS.filter(s => s.id.startsWith('arena_station_')).map(station =>
+      <EvolvingRig key={station.id} x={station.seat.x} z={station.seat.y - 0.45} level={level} compact />
+    )}
+  </group>;
+}
+
+// -------------------------------------------------------------
 // MAIN HOUSE FURNITURE 3D ORCHESTRATOR
 // -------------------------------------------------------------
 export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }) => {
   const cosmetics = useGameStore((s) => s.empire.vipInventory);
-  const scrimUnlocked = facilities.scrim_lab?.isUnlocked ?? true;
+  const scrimUnlocked = facilities.scrim_lab?.isUnlocked ?? false;
   const streamUnlocked = facilities.streaming_pod?.isUnlocked ?? false;
   const analystUnlocked = facilities.analyst_room?.isUnlocked ?? false;
   const gymUnlocked = facilities.gym?.isUnlocked ?? false;
@@ -1288,11 +1253,11 @@ export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }
               const minLevel = k < 4 ? 1 : 3;
               if ((facilities.scrim_lab?.level ?? 1) < minLevel) return null;
               return (
-                <BattlestationRig
+                <EvolvingRig
                   key={`scrim-${row}-${col}`}
-                  x={dx}
-                  z={dy}
-                  upgraded={(facilities.scrim_lab?.level ?? 1) >= 5}
+                  x={dx + 0.74}
+                  z={dy + 0.48}
+                  level={facilities.scrim_lab?.level ?? 1}
                 />
               );
             })
@@ -1301,6 +1266,9 @@ export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }
       ) : (
         <ConstructionZone x={0.4} z={0.4} w={6.0} d={5.8} />
       )}
+
+      {/* Level 6 expansion: a real, visible 12-rig multi-title arena wing. */}
+      {scrimUnlocked && (facilities.scrim_lab?.level ?? 0) >= 6 && <ChampionshipArenaContent level={facilities.scrim_lab.level} />}
 
       {/* 2. STREAM STUDIO */}
       {streamUnlocked ? (
@@ -1327,31 +1295,33 @@ export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }
       {merchUnlocked ? (
         <MerchContent level={facilities.merch_store?.level ?? 1} />
       ) : (
-        <ConstructionZone x={11.0} z={7.5} w={2.6} d={6.1} />
+        <ConstructionZone x={11.0} z={7.5} w={6.2} d={6.1} />
       )}
 
       {/* 6. CAFETERIA - built only after funding or cash unlock */}
-      {cafeteriaUnlocked ? <group>
-        <mesh position={[-4.7, 0.45, 8.5]} castShadow><boxGeometry args={[3.5, 0.9, 0.65]} /><meshStandardMaterial color="#d97706" roughness={0.75} /></mesh>
-        <mesh position={[-4.7, 0.92, 8.5]} castShadow><boxGeometry args={[3.55, 0.07, 0.72]} /><meshStandardMaterial color="#fef3c7" roughness={0.55} /></mesh>
-        {[9.9, 11.6].map(z => <group key={z}>
-          <mesh position={[-3.9, 0.42, z]} castShadow><cylinderGeometry args={[0.63, 0.63, 0.08, 16]} /><meshStandardMaterial color="#f8fafc" /></mesh>
-          <mesh position={[-3.9, 0.2, z]}><cylinderGeometry args={[0.08, 0.08, 0.4, 10]} /><meshStandardMaterial color="#475569" /></mesh>
-          <mesh position={[-2.9, 0.24, z]} castShadow><boxGeometry args={[0.48, 0.48, 0.5]} /><meshStandardMaterial color="#fb923c" /></mesh>
-        </group>)}
-      </group> : <ConstructionZone x={-5.4} z={7.5} w={5.2} d={6.1} />}
+      {cafeteriaUnlocked ? (
+        <CafeteriaContent level={facilities.cafeteria?.level ?? 1} />
+      ) : (
+        <ConstructionZone x={-5.4} z={7.5} w={5.2} d={6.1} />
+      )}
 
       {/* HALLWAY COMMONS (Vending, Water Cooler) */}
       <HallwayContent />
+      {([
+        ['streaming_pod', [12.3, 0, 0.85]], ['analyst_room', [3.4, 0, 8.1]],
+        ['gym', [8.3, 0, 8.1]], ['merch_store', [15.6, 0, 12.6]],
+        ['cafeteria', [-2.6, 0, 8.5]],
+      ] as [FacilityId, [number, number, number]][]).map(([id, position]) => facilities[id]?.isUnlocked &&
+        <RoomEquipmentUpgrade key={id} id={id} level={facilities[id].level} position={position} />)}
       {scrimUnlocked && cosmetics.includes('rgb_neon') && <group position={[3.4, 1.2, 0.55]}>
         <mesh><boxGeometry args={[2.2, 0.32, 0.05]} /><meshStandardMaterial color="#22d3ee" emissive="#06b6d4" emissiveIntensity={1.8} /></mesh>
         <mesh position={[0, 0, 0.04]}><boxGeometry args={[1.8, 0.08, 0.02]} /><meshBasicMaterial color="#f0abfc" /></mesh>
       </group>}
-      {cafeteriaUnlocked && cosmetics.includes('luxury_arcade') && <group position={[-6.2, 0.8, 10.9]}>
+      {cafeteriaUnlocked && cosmetics.includes('luxury_arcade') && <group position={[-2.1, 0.8, 13.05]}>
         <mesh castShadow><boxGeometry args={[0.6, 1.6, 0.7]} /><meshStandardMaterial color="#7c3aed" roughness={0.3} /></mesh>
         <mesh position={[0, 0.25, 0.36]}><boxGeometry args={[0.48, 0.55, 0.02]} /><meshBasicMaterial color="#22d3ee" /></mesh>
       </group>}
-      {cosmetics.includes('gold_pedestal') && <group position={[7.75, 0.45, 6.85]}>
+      {merchUnlocked && cosmetics.includes('gold_pedestal') && <group position={[11.7, 0.45, 12.8]}>
         <mesh castShadow><cylinderGeometry args={[0.32, 0.42, 0.9, 12]} /><meshStandardMaterial color="#d4af37" metalness={0.85} roughness={0.2} /></mesh>
         <mesh position={[0, 0.57, 0]}><octahedronGeometry args={[0.23]} /><meshStandardMaterial color="#fef08a" metalness={0.6} /></mesh>
       </group>}

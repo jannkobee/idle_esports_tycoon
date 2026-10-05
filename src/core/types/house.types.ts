@@ -59,4 +59,6 @@ export interface WallSegment { area: HouseArea; rect: Rect; axis: 'x' | 'y' }
 export interface ActivityGains {
   hype: number;
   stats: Record<string, Partial<PlayerStats>>;
+  /** Players who completed a real outdoor or shop recovery visit this tick. */
+  inspiredPlayers?: string[];
 }
