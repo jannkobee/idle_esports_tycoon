@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { useGameStore } from './useGameStore';
+import { generateStaffMarket } from '../staff/StaffService';
 
 describe('useGameStore', () => {
   beforeEach(() => {
@@ -24,6 +25,22 @@ describe('useGameStore', () => {
     expect(useGameStore.getState().upgradeBranch('west_coast')).toBe(true);
     expect(useGameStore.getState().empire.branches).toEqual([{ id: 'west_coast', tier: 2 }]);
     expect(useGameStore.getState().cash).toBe(49600);
+  });
+
+  it('updates each pro with their own discipline coach rotation', () => {
+    const market = generateStaffMarket(53);
+    const fpsCoach = { ...market.find(person => person.kind === 'coach' && person.discipline === 'fps')!, tactic: 'aggressive' as const };
+    const mobaCoach = { ...market.find(person => person.kind === 'coach' && person.discipline === 'moba')!, tactic: 'macro' as const };
+    const initial = useGameStore.getState().roster[0];
+    const roster = [initial, { ...initial, id: 'moba_pro', discipline: 'moba' as const }];
+    useGameStore.setState({ cash: 100_000, roster, staffMarket: [fpsCoach, mobaCoach] });
+
+    expect(useGameStore.getState().hireStaff(fpsCoach.id)).toBe(true);
+    expect(useGameStore.getState().hireStaff(mobaCoach.id)).toBe(true);
+
+    const updated = useGameStore.getState().roster;
+    expect(updated[0].dailySchedule).toEqual(['scrim', 'scrim', 'vod', 'gym', 'outdoor']);
+    expect(updated[1].dailySchedule).toEqual(['vod', 'vod', 'scrim', 'gym', 'outdoor']);
   });
 
   it('gives an HQ Pulse reward only when its cooldown is ready', () => {

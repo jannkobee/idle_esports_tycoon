@@ -1,5 +1,5 @@
 import { FacilityId } from './facility.types';
-import { PlayerStats } from './player.types';
+import { EsportsDiscipline, PlayerStats } from './player.types';
 
 export interface Vec { x: number; y: number }
 /** Axis-aligned footprint in house tile coordinates. */
@@ -22,6 +22,8 @@ export interface HouseStation {
   id: string;
   activity: ActivityId;
   area: HouseArea;
+  /** Practice rigs reserved for a specific esports discipline. */
+  discipline?: EsportsDiscipline;
   /** Where the character sits or stands while doing the activity. */
   seat: Vec;
   /** Walkable point next to the seat; navigation paths start and end here. */

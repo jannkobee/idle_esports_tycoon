@@ -1,5 +1,6 @@
 import { equipmentTierIndex, getEquipmentTier } from '../../../core/facilities/equipmentProgression';
 import type { FacilityId } from '../../../core/types/facility.types';
+import type { EsportsDiscipline } from '../../../core/types/player.types';
 
 function Display({ x = 0, y = 1.03, z = 0, width = 0.65, angle = 0, color }: { x?: number; y?: number; z?: number; width?: number; angle?: number; color: string }) {
   return <group position={[x, y, z]} rotation={[0, angle, 0]}>
@@ -11,7 +12,20 @@ function Display({ x = 0, y = 1.03, z = 0, width = 0.65, angle = 0, color }: { x
 }
 
 /** All variants stay inside the same desk footprint and retain the same seat. */
-export function EvolvingRig({ x, z, level, compact = false }: { x: number; z: number; level: number; compact?: boolean }) {
+const DISCIPLINE_COLORS: Record<EsportsDiscipline, string> = {
+  fps: '#38bdf8',
+  moba: '#a78bfa',
+  br: '#fb7185',
+  fighting: '#fbbf24',
+};
+
+export function EvolvingRig({ x, z, level, compact = false, discipline }: {
+  x: number;
+  z: number;
+  level: number;
+  compact?: boolean;
+  discipline?: EsportsDiscipline;
+}) {
   const tier = equipmentTierIndex(level);
   const { color, finish } = getEquipmentTier(level);
   const width = compact ? 0.85 : 1.44;
@@ -26,6 +40,10 @@ export function EvolvingRig({ x, z, level, compact = false }: { x: number; z: nu
     <mesh position={[0, 0.68, 0]} castShadow receiveShadow><boxGeometry args={[width, 0.07, depth]} /><meshStandardMaterial color={finish} roughness={tier ? 0.4 : 0.85} metalness={tier ? 0.4 : 0} /></mesh>
     {[-1, 1].map(side => <mesh key={side} position={[side * (width / 2 - 0.08), 0.33, 0]} castShadow><boxGeometry args={[0.07, 0.66, depth * 0.8]} /><meshStandardMaterial color={tier === 5 ? color : '#334155'} /></mesh>)}
     {tier > 0 && <mesh position={[0, 0.64, depth / 2]}><boxGeometry args={[width - 0.04, 0.025, 0.015]} /><meshBasicMaterial color={color} /></mesh>}
+    {discipline && <mesh position={[0, 0.705, depth / 2 + 0.009]}>
+      <boxGeometry args={[width * 0.72, 0.025, 0.012]} />
+      <meshBasicMaterial color={DISCIPLINE_COLORS[discipline]} />
+    </mesh>}
     {displays.map((display, i) => <Display key={i} {...display} z={-depth * 0.27} color={color} />)}
     <mesh position={[-0.08, 0.728, depth * 0.22]}><boxGeometry args={[width * 0.4, 0.025, depth * 0.2]} /><meshStandardMaterial color={tier >= 4 ? '#f8fafc' : '#020617'} /></mesh>
     <mesh position={[width * 0.29, 0.733, depth * 0.22]}><sphereGeometry args={[0.045, 8, 6]} /><meshStandardMaterial color={color} /></mesh>

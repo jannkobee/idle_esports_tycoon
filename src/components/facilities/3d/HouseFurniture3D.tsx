@@ -1222,7 +1222,7 @@ function HallwayContent() {
 function ChampionshipArenaContent({ level }: { level: number }) {
   return <group>
     {HOUSE_STATIONS.filter(s => s.id.startsWith('arena_station_')).map(station =>
-      <EvolvingRig key={station.id} x={station.seat.x} z={station.seat.y - 0.45} level={level} compact />
+      <EvolvingRig key={station.id} x={station.seat.x} z={station.seat.y - 0.45} level={level} compact discipline={station.discipline} />
     )}
   </group>;
 }
@@ -1258,6 +1258,7 @@ export const HouseFurniture3D: React.FC<HouseFurniture3DProps> = ({ facilities }
                   x={dx + 0.74}
                   z={dy + 0.48}
                   level={facilities.scrim_lab?.level ?? 1}
+                  discipline={HOUSE_STATIONS.find(station => station.id === `scrim_station_${k}`)?.discipline}
                 />
               );
             })

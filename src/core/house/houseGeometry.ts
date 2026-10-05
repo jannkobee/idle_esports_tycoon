@@ -337,16 +337,18 @@ export const HOUSE_STATIONS: HouseStation[] = [
       const k = row * 3 + col;
       const dx = 0.9 + 1.6 * col;
       const dy = 0.9 + 2.2 * row;
+      const disciplines = ['fps', 'moba', 'br', 'fighting'] as const;
       return {
         id: `scrim_station_${k}`,
         activity: "practice" as const,
         area: "scrim_lab" as HouseArea,
+        discipline: disciplines[k % disciplines.length],
         seat: { x: dx + 0.74, y: dy + 1.22 },
         approach: { x: dx + 0.74, y: dy + 1.8 },
         facing: "ne" as const,
         pose: "sit" as const,
         minLevel: k < 4 ? 1 : 3,
-        label: `Practice Rig ${k + 1}`,
+        label: `${disciplines[k % disciplines.length].toUpperCase()} Practice Rig ${k + 1}`,
       };
     }),
   ),
@@ -356,17 +358,18 @@ export const HOUSE_STATIONS: HouseStation[] = [
   // FPS, MOBA, battle royale, and fighting-game specialists.
   ...[0, 1, 2].flatMap(row => [0, 1, 2, 3].map(col => {
     const index = row * 4 + col;
-    const titles = ['FPS', 'MOBA', 'BR', 'FIGHT'];
+    const disciplines = ['fps', 'moba', 'br', 'fighting'] as const;
     return {
       id: `arena_station_${index}`,
       activity: 'practice' as const,
       area: 'scrim_lab' as HouseArea,
+      discipline: disciplines[col],
       seat: { x: 15.35 + col * 1.38, y: 1.45 + row * 1.55 },
       approach: { x: 15.35 + col * 1.38, y: 2.05 + row * 1.55 },
       facing: 'ne' as const,
       pose: 'sit' as const,
       minLevel: 6,
-      label: `${titles[col]} Arena Rig ${row + 1}`,
+      label: `${disciplines[col].toUpperCase()} Arena Rig ${row + 1}`,
     };
   })),
 

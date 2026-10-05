@@ -14,7 +14,6 @@ import { findAStarPath, getNavGrid, NavContext } from './navigation';
 import { createRng } from './rng';
 import {
   createHouseSim,
-  houseAgentCapacity,
   findBestStation,
   getOccupiedStationIds,
   pickNextActivity,
@@ -49,14 +48,18 @@ describe('district shop visits', () => {
 });
 
 describe('scalable multi-title arena', () => {
-  it('expands the active HQ capacity and exposes twelve extra rigs at lab level six', () => {
-    const upgraded = { ...TEST_FACILITIES, scrim_lab: { ...TEST_FACILITIES.scrim_lab, isUnlocked: true, level: 6 } };
-    expect(houseAgentCapacity(TEST_FACILITIES)).toBe(8);
-    expect(houseAgentCapacity(upgraded)).toBe(18);
+  it('assigns discipline-specific practice stations and exposes twelve extra rigs at lab level six', () => {
     const unlocked = new Set<FacilityId>(['scrim_lab']);
     const arenaStations = HOUSE_STATIONS.filter(station => station.id.startsWith('arena_station_'));
     expect(arenaStations).toHaveLength(12);
     expect(arenaStations.every(station => isStationAvailable(station, unlocked, { scrim_lab: 6 } as Record<FacilityId, number>))).toBe(true);
+    expect(new Set(arenaStations.map(station => station.discipline))).toEqual(new Set(['fps', 'moba', 'br', 'fighting']));
+    expect(HOUSE_STATIONS.filter(station => station.activity === 'practice' && station.minLevel === 1)
+      .map(station => station.discipline)).toEqual(['fps', 'moba', 'br', 'fighting']);
+
+    const mobaSim = createHouseSim([createTestRoster(1)[0]], TEST_FACILITIES);
+    const mobaAgent = { ...mobaSim.agents[0], discipline: 'moba' as const };
+    expect(findBestStation(mobaAgent, 'practice', [], unlocked, mobaSim.facilityLevels)?.discipline).toBe('moba');
   });
 });
 
@@ -514,16 +517,37 @@ describe('House Simulation Engine', () => {
     });
   });
 
-  describe('8-Player Squad Support and Front-Door Spawning', () => {
-    it('accommodates up to 8 active players in the house', () => {
-      const largeRoster = createTestRoster(10);
+  describe('Large Roster Rotations and Front-Door Spawning', () => {
+    it('simulates every active pro beyond the former 18-agent limit', () => {
+      const largeRoster = createTestRoster(24);
       const sim = createHouseSim(largeRoster, TEST_FACILITIES, 999);
-      expect(sim.agents.length).toBe(8);
-      // Starters are prioritized
+      expect(sim.agents.length).toBe(24);
+      expect(new Set(sim.agents.map(agent => agent.id)).size).toBe(24);
       const starters = sim.agents.filter(a =>
         largeRoster.find(p => p.id === a.id)?.role === 'starter'
       );
       expect(starters.length).toBe(5);
+      for (const agent of sim.agents) {
+        const stationId = agent.stationId ?? agent.targetStationId;
+        if (agent.activity === 'practice' && stationId) {
+          expect(HOUSE_STATIONS.find(station => station.id === stationId)?.discipline).toBe(agent.discipline);
+        }
+      }
+      const waiting = sim.agents.filter(agent => agent.mode === 'waiting');
+      expect(waiting.length).toBeGreaterThan(0);
+      expect(new Set(waiting.map(agent => `${agent.x},${agent.y}`)).size).toBe(waiting.length);
+    });
+
+    it('moves a pro to a matching rig if their discipline changes', () => {
+      const fpsPlayer = createTestRoster(1)[0];
+      const sim = createHouseSim([fpsPlayer], TEST_FACILITIES, 999);
+      expect(sim.agents[0].stationId).toBe('scrim_station_0');
+      const mobaPlayer = { ...fpsPlayer, discipline: 'moba' as const };
+
+      syncHouseSim(sim, [mobaPlayer], TEST_FACILITIES);
+
+      expect(sim.agents[0].stationId).toBeNull();
+      expect(sim.agents[0].targetStationId).toBe('scrim_station_1');
     });
 
     it('spawns new recruits at the front door and paths them into the house', () => {

@@ -929,7 +929,7 @@ export const useGameStore = create<GameStoreState>()(
           age: 18 + Math.floor(Math.random() * 15),
           potential: rarity === 'diamond' ? 96 : rarity === 'gold' ? 88 : rarity === 'silver' ? 78 : 69,
           position: discipline === 'fps' ? 'rifler' : discipline === 'moba' ? 'mid' : discipline === 'br' ? 'fragger' : 'fighter',
-          dailySchedule: staffDailySchedule(get().hiredStaff),
+          dailySchedule: staffDailySchedule(get().hiredStaff, discipline),
           sportsPreference: Math.random() < 0.4 ? 'basketball' : Math.random() < 0.75 ? 'football' : 'none',
         };
         newPlayer.potential = Math.max(newPlayer.potential ?? 70, ...Object.values(newPlayer.stats));
@@ -950,7 +950,7 @@ export const useGameStore = create<GameStoreState>()(
         const cost = Math.round(CARD_PACK_COST * (1 - Math.max(gmHired ? 0.2 : 0, managerDiscount(state.hiredStaff, 'gm'))));
         if (state.cash < cost) return null;
         const card = generateCard(discipline, state.roster.length);
-        const signed = { ...card, dailySchedule: staffDailySchedule(state.hiredStaff) };
+        const signed = { ...card, dailySchedule: staffDailySchedule(state.hiredStaff, discipline) };
         set({ cash: state.cash - cost, roster: [...state.roster, signed] });
         get().recordDailyObjective('recruit');
         return signed;
@@ -1077,7 +1077,7 @@ export const useGameStore = create<GameStoreState>()(
         const empire = state.empire ?? INITIAL_EMPIRE;
         set({ cash: state.cash - candidate.hireCost,
           hiredStaff,
-          roster: state.roster.map(player => ({ ...player, dailySchedule: staffDailySchedule(hiredStaff) })),
+          roster: state.roster.map(player => ({ ...player, dailySchedule: staffDailySchedule(hiredStaff, player.discipline) })),
           staffMarket: state.staffMarket.filter(person => person.id !== candidateId),
           empire: { ...empire, schedule: staffDailySchedule(hiredStaff),
             executives: candidate.kind === 'manager' ? empire.executives.map(person => person.role === candidate.executiveRole ? { ...person, name: candidate.name, hired: true } : person) : empire.executives },
@@ -1610,7 +1610,7 @@ export const useGameStore = create<GameStoreState>()(
         roster: (previous.roster ?? current.roster).map(player => {
           const { avatar: _avatar, ...rest } = player as ProPlayer & { avatar?: string };
           return { ...rest, portraitIndex: getPortraitIndex(player.id, player.portraitIndex),
-            dailySchedule: managedSchedule };
+            dailySchedule: staffDailySchedule(migratedStaff, player.discipline) };
         }),
         facilities: { ...INITIAL_FACILITIES, ...(previous.facilities ?? {}) },
         roomFunding: previous.roomFunding ?? {},

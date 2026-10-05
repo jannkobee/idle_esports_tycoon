@@ -4,6 +4,19 @@
 
 This document provides a modular, step-by-step roadmap designed for **AI coding agents** and developers to pick up tasks autonomously and build the game incrementally with verification checkpoints at every step.
 
+## Current priorities — HQ Stabilization & Meaningful Expansion
+
+The original phase outline below records the implementation sequence; it is not a reliable checklist of current status. Use this ordered, current backlog instead:
+
+1. **Finish HQ visual verification:** connected-layout and camera fixes are implemented, but entrance/furniture spacing, player routes, roofs, and framing still need visual verification at 390px with rooms locked and fully upgraded.
+2. **Make room expansion legible (implemented):** the selected-room inspector shows active/total station capacity, occupied stations, and the next physical milestone's new stations or equipment-model change. Keep these details derived from the live station/model definitions; do not imply an upgrade adds capacity unless its layout does so.
+3. **Support larger rosters (implemented):** every non-inactive pro is simulated and rendered, with station contention creating practice rotations rather than dropping players past an agent cap. Scrim rigs are assigned by discipline, and each discipline's coach sets its routine.
+4. **Connect progression to rewards:** daily objectives and HQ Pulse exist. Room unlocks, player development, and tournament milestones still need more visible celebrations and meaningful reward links.
+5. **Build independent branches:** branches currently provide investment/training bonuses and visible campuses, not separate cities, teams, rosters, staff capacity, or competitions.
+6. **Prepare Android release:** native packaging, performance testing, real ad integration, and verified Google Play cosmetic purchases remain future work. Billing is only a prepared bridge.
+
+Finish the remaining 390px visual verification in priority 1 before adding further buildings. Preserve the existing schema-v1 save compatibility while doing so.
+
 ---
 
 ## Phase Overview
@@ -103,23 +116,23 @@ Phase 7: Mobile Capacitor Packaging, Android Build & Native AdMob Setup
 ### Phase 3: Gaming House Facilities UI & Live Team Room
 
 #### Task 3.1: Facility Room Cards
-- **Target Files:** `src/components/facilities/FacilityCard.tsx`, `src/components/facilities/FacilityList.tsx`
-- **Description:** Render the gaming house rooms:
-  1. *Basement PC Scrim Lab* (Starter room)
-  2. *Streaming Pods* (Passive Cash + Hype)
-  3. *Fitness & Gym* (Player energy recovery)
-  4. *Analyst & Coaching War Room* (Tournament win multiplier)
-  5. *Merch Factory* (High cash multiplier)
+- **Target Files:** `src/components/facilities/GamingHouse.tsx`, `src/core/facilities/roomExpansion.ts`
+- **Status:** Implemented in the selected-room inspector. The separate compact cash/income list remains unchanged.
+- **Current scope:** Keep room capacity and upgrade information grounded in the connected HQ's real station and equipment data. The inspector shows active/total stations, occupied stations, the next physical milestone, and a preview naming new stations or the before/after equipment model.
 - **Acceptance Criteria:**
-  - Each room shows level, current DPS (Dollars Per Second), cost to upgrade, and "Upgrade x1 / x10 / Max" toggle.
+  - Capacity and occupancy reflect currently available room stations; locked or future stations are not counted as active.
+  - The next-change preview identifies the next real physical milestone, or clearly says when only income upgrades remain.
+  - Existing income, upgrade cost, and unlock behavior remain unchanged.
 
 #### Task 3.2: Automatic Team Room (replaces the cash clicker)
 - **Target Files:** `src/components/facilities/GamingHouse.tsx`, `HouseScenery.tsx`, `HousePeople.tsx`, `src/core/engine/HouseLayout.ts`, `src/components/roster/PlayerPortrait.tsx`
-- **Description:** Isometric cutaway house with five furnished rooms, actual roster characters practicing and walking, and automatic income. Select rooms to unlock/upgrade, select players to inspect stats, and pan/zoom the view. Initial playable version implemented; richer room-specific activities and animation remain future work.
+- **Description:** The HQ is now a connected, expandable isometric cutaway with six usable facility rooms, autonomous roster characters, room-specific stations, a multi-title arena, and camera/roof controls. Keep navigation and visible furniture aligned with the shared station/facility-level definitions. Visual verification at 390px across locked and fully upgraded rooms remains outstanding.
 - **Acceptance Criteria:**
   - Stable local portraits survive reloads; existing saves retain progress.
   - No cash-tap action; selecting players never changes currency.
-  - Paginate larger rosters and respect reduced-motion preferences.
+  - Every active room station has a reachable route, and locked room stations remain unavailable.
+  - Every non-inactive roster member has a house agent; station contention routes pros through discipline-specific practice rotations instead of removing them from the simulation.
+  - Practice stations are reserved for their discipline, and an individual coach's tactic determines that discipline's staff-designed routine.
 
 ---
 

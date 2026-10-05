@@ -115,11 +115,20 @@ export function coachSelectLineup(roster: ProPlayer[], discipline: EsportsDiscip
   return lineup;
 }
 
-export function staffDailySchedule(staff: StaffCandidate[]): ScheduleBlock[] {
+export function staffDailySchedule(staff: StaffCandidate[], discipline?: EsportsDiscipline): ScheduleBlock[] {
   const ops = staff.find(person => person.kind === 'manager' && person.executiveRole === 'ops');
-  const coach = staff.filter(person => person.kind === 'coach').sort((a, b) => b.rating - a.rating)[0];
+  const coaches = staff.filter(person => person.kind === 'coach');
+  const coach = discipline
+    ? activeCoach(staff, discipline)
+    : coaches.sort((a, b) => b.rating - a.rating)[0];
+  const breakBlock = ops && ops.rating >= 70 ? 'rest' : 'outdoor';
+  if (discipline && coach) {
+    if (coach.tactic === 'macro') return ['vod', 'vod', 'scrim', 'gym', breakBlock];
+    if (coach.tactic === 'aggressive') return ['scrim', 'scrim', 'vod', 'gym', breakBlock];
+    if (coach.tactic === 'defensive') return ['vod', 'gym', 'scrim', breakBlock, 'rest'];
+    return ['scrim', 'vod', 'gym', breakBlock, 'rest'];
+  }
   const first = coach?.tactic === 'macro' ? 'vod' : 'scrim';
   const second = first === 'vod' ? 'scrim' : 'vod';
-  const breakBlock = ops && ops.rating >= 70 ? 'rest' : 'outdoor';
   return [first, second, 'gym', breakBlock, 'rest'];
 }

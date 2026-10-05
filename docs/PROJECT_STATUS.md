@@ -2,12 +2,20 @@
 
 Reviewed October 5, 2026.
 
+## Latest pass — all-roster practice rotations
+
+- Every non-inactive pro now gets a live, rendered HQ agent; the former 8/18-player simulation cutoff is removed. When matching practice rigs are occupied, players rotate through available activities and retry their discipline's rigs instead of being omitted.
+- Scrim rigs have discipline assignments and visible color accents. Individual coaches set tactic-based practice/VOD/gym routines per discipline; the Empire panel displays each rotation. Players without a discipline coach use the standard routine.
+- Added regression coverage for rosters above 18, discipline-matched stations, discipline changes during simulation, and per-discipline coach schedules.
+- `npm.cmd test -- --run --maxWorkers=1 --minWorkers=1` passes 102 tests; `npm.cmd run build` succeeds. Vite retains its existing large-chunk warning.
+
 ## Current pass — HQ cleanup and equipment evolution
 
 - Removed the duplicate decorative campus buildings. Usable Merch/dining extensions and the level-6 arena connect to the main hall; the garage occupies a separate plot. Core exterior walls and extension walls now participate in navigation. A failed path no longer falls back to walking through walls.
 - Sliding door leaves park beside their openings. Real window glazing replaces glass placed over opaque wall slabs. Merch rack/counter overlaps, cafeteria furniture collisions, strategy chairs, studio sofa/table placement, and the gym barbell footprint were corrected. Old outdoor-TV/car-seat stations now describe real garden/promenade activities; players no longer sit on absent props.
 - Mobile controls fit at 390px. The scene has reserved space between HUD and inspector, and camera Reset fits the HQ while retaining manual orbit/pan/zoom. Floor switches preserve lateral framing; Reset respects the selected floor. The upper-floor roof now exists, its stair opening is genuinely cut out, and roof-on hides the upper TV label. Pause stops the simulation clock; ordinary idle income remains independent.
 - Six bounded equipment model tiers: levels 1/10/25/50/100/250. Both starter and arena PCs change geometry, monitor configuration, tower cooling, chair, finish, and trim. Other facilities gain equipment attachments at these milestones. The inspector names the current/next model and announces milestone upgrades. Level 250 is the **visual** maximum, not a purchase/income cap. No new equipment save fields or gameplay multipliers were introduced.
+- Room inspectors now show active versus total station capacity, currently occupied stations, and the next physical milestone. Previews name newly available stations or show the current-to-next equipment model; maxed visual tiers say remaining upgrades increase income only. These are live descriptions of existing room geometry and do not change gameplay or save data.
 - Restored pre-existing missing sports-upgrade, catering-selection, and sound-toggle store actions that caused four baseline tests to fail. Missing optional catering/sound fields receive schema-v1 defaults. These hooks do not constitute a complete sports/catering/audio product rollout.
 - Automated tests now cover all usable station approaches at each model tier, blocked-path handling, Pause, six distinct PC geometries, bounded desk sizes, and camera limits. See [HQ layout contract](HQ_LAYOUT_CONTRACT.md) before changing geometry.
 
@@ -33,9 +41,9 @@ The current working tree retains the branch network and shop-visit flow, while t
 - Los Angeles, Seoul, and Berlin specialist branches have persisted open/upgrade state, an Empire drawer section, online/offline income, discipline-matched training bonuses, and visible tiered 3D campuses. These are investment campuses, not independent teams or city scenes; there is no per-branch roster yet.
 - Dynasty Mart and GG Boba have open-front cutaway interiors. Players on breaks can walk along the marked crosswalk into their interior stations; the boba cafe requires district tier 2. Visits restore energy, develop tilt resistance, and grant a temporary energized buff. Additional NPC shoppers enter the storefronts.
 - The camera never automatically frames shops or branches. Free orbit, pan, zoom, and floor-aware Reset remain available; the roof button toggles the selected floor's roof (plus wings on the ground floor) and garage canopy.
-- At PC Scrim Lab level 6, a visible Multi-Title Arena Wing adds 12 dedicated rigs to the existing six. Live simulation capacity rises from 8 to 18 pros; the rig visuals and stations are grouped by FPS, MOBA, battle royale, and fighting games. Players beyond the capacity remain in the roster but are not rendered/simulated in the HQ until the wing opens.
+- At PC Scrim Lab level 6, a visible Multi-Title Arena Wing adds 12 dedicated rigs to the existing six. All non-inactive roster members are simulated/rendered, regardless of station count. Practice stations are discipline-specific; when matching stations are occupied, pros rotate through available house activities and retry practice instead of being dropped. Each discipline's coach assigns a tactic-based practice/VOD/gym routine.
 - HQ Pulse is a repeatable, player-facing reward available every 90 seconds. It pays cash based on active pros and hype plus one Energy Can; every fifth consecutive claim pays three cans. It is persisted and cooldown-gated.
-- `npm.cmd test -- --run` passes 94 tests and `npm.cmd run build` succeeds. Automated tests cover the crosswalk path, district-tier gate, arena capacity, HQ Pulse cooldown, daily objective claims, automatic Inspired recovery, and World Championship archive but not visual appearance or touch gestures. Use the isolated Edge smoke check and inspect its screenshots for visual regressions.
+- The verified suite now passes 102 tests and the production build succeeds. Automated tests cover the crosswalk path, district-tier gate, arena stations, HQ Pulse cooldown, daily objective claims, automatic Inspired recovery, World Championship archive, and room expansion summaries/previews, but not visual appearance or touch gestures. Use the isolated Edge smoke check and inspect its screenshots for visual regressions.
 
 This section documents the active, confirmed state of the repository as it is today. Preserve schema-v1 save compatibility when making future live-world changes.
 
@@ -106,7 +114,7 @@ The store is unified with Zustand persistence. Ads are store-driven; IAdService 
 
 ## Prioritized remaining work
 
-1. Expose occupied/available room stations, capacity bottlenecks, and purchase previews; add x10/Max purchases without bypassing costs.
+1. Room inspectors now expose active/total stations, occupied stations, and the next physical change. Generic purchase previews and x10/Max purchases remain future work.
 2. Improve staff-led rotations for larger multi-discipline rosters; implement upstairs simulation before calling dorms functional.
 3. Connect existing daily/HQ rewards to longer-term facility, development, and tournament milestones. Event history already retains 12 completed tournaments.
 4. Develop branches into independent teams/city scenes; currently they are investment campuses.
@@ -114,7 +122,7 @@ The store is unified with Zustand persistence. Ads are store-driven; IAdService 
 
 ## Verification
 
-`npm.cmd test -- --run` passes 94 tests covering formulas, store transitions, HQ Pulse cooldowns, daily objective claims, multi-title arena capacity, branch purchases and income, crosswalk/shop routing, automatic Inspired recovery, season archive persistence, cosmetic ownership and Android billing gating, save compatibility, coach lineup and routine choices, sports autonomy, room/ad funding, card development, and tournament brackets. `npm.cmd run build` verifies strict TypeScript compilation and production bundling. `node scripts/verify-hq.mjs` captures starter/max-tier and floor/roof states at 390×844 and checks portrait/landscape control bounds in isolated Edge. Real-device gestures and performance remain unverified.
+`npm.cmd test -- --run` passes 99 tests covering formulas, store transitions, HQ Pulse cooldowns, daily objective claims, multi-title arena capacity, branch purchases and income, crosswalk/shop routing, automatic Inspired recovery, season archive persistence, cosmetic ownership and Android billing gating, save compatibility, coach lineup and routine choices, sports autonomy, room/ad funding, card development, tournament brackets, and room station summaries/expansion previews. `npm.cmd run build` verifies strict TypeScript compilation and production bundling. `node scripts/verify-hq.mjs` captures starter/max-tier and floor/roof states at 390×844 and checks portrait/landscape control bounds in isolated Edge. Real-device gestures and performance remain unverified.
 
 Suggested browser checks: claim offline rewards through an ad; skip and retry scouting; recruit each genre; resume after boost expiry; reload an unclaimed offline reward; watch five sponsor clips to inspect payouts.
 

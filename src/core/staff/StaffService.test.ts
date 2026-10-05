@@ -47,4 +47,14 @@ describe('generated staff market', () => {
     const ops = { ...generateStaffMarket(99).find(person => person.executiveRole === 'ops')!, rating: 80 };
     expect(staffDailySchedule([macroCoach, ops])).toEqual(['vod', 'scrim', 'gym', 'rest', 'rest']);
   });
+
+  it('gives each discipline the routine prescribed by its own coach', () => {
+    const market = generateStaffMarket(313);
+    const fpsCoach = { ...market.find(person => person.kind === 'coach' && person.discipline === 'fps')!, tactic: 'aggressive' as const };
+    const mobaCoach = { ...market.find(person => person.kind === 'coach' && person.discipline === 'moba')!, tactic: 'macro' as const };
+    const coaches = [fpsCoach, mobaCoach];
+    expect(staffDailySchedule(coaches, 'fps')).toEqual(['scrim', 'scrim', 'vod', 'gym', 'outdoor']);
+    expect(staffDailySchedule(coaches, 'moba')).toEqual(['vod', 'vod', 'scrim', 'gym', 'outdoor']);
+    expect(staffDailySchedule(coaches, 'br')).toEqual(['scrim', 'vod', 'gym', 'outdoor', 'rest']);
+  });
 });

@@ -7,6 +7,8 @@ import { StaffMarket } from './StaffMarket';
 import { CosmeticStore } from './CosmeticStore';
 import { BRANCHES, branchIncomePerSecond, branchUpgradeCost } from '../../core/empire/BranchService';
 import { DailyRewardsPanel } from '../progression/DailyRewardsPanel';
+import { staffDailySchedule } from '../../core/staff/StaffService';
+import { DISCIPLINE_INFO, EsportsDiscipline } from '../../core/types/player.types';
 
 const FLEET_NAMES = ['Crimson Sports Coupe', 'Executive Sprinter Van', 'Luxury Team Tour Bus'];
 const DISTRICT_NAMES = ['Suburban Street / Dynasty Mart', 'Esports Plaza & Park', 'Metropolis Tech Promenade'];
@@ -55,7 +57,7 @@ export const EmpirePanel: React.FC = () => {
       })}</div>
     </section>
 
-    <section className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-3"><div className="flex gap-2"><Sunrise size={17} className="text-indigo-300" /><div><h3 className="text-sm font-black">Staff-Designed Routine</h3><p className="text-[10px] text-slate-400">Coaches and operations managers set priorities. Pros can rest, roam, or play sports when they need to.</p></div></div><div className="mt-3 grid grid-cols-5 gap-1">{empire.schedule.map((block, slot) => <div key={slot} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-center text-[9px] font-bold text-slate-200">{SCHEDULE_LABELS[block]}</div>)}</div></section>
+    <section className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-3"><div className="flex gap-2"><Sunrise size={17} className="text-indigo-300" /><div><h3 className="text-sm font-black">Staff-Designed Routine</h3><p className="text-[10px] text-slate-400">Coaches and operations managers set priorities. Pros can rest, roam, or play sports when they need to.</p></div></div><div className="mt-3 grid grid-cols-5 gap-1">{empire.schedule.map((block, slot) => <div key={slot} className="min-w-0 rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-center text-[9px] font-bold text-slate-200">{SCHEDULE_LABELS[block]}</div>)}</div><div className="mt-2 grid grid-cols-2 gap-1">{(Object.keys(DISCIPLINE_INFO) as EsportsDiscipline[]).map(discipline => { const coach = store.hiredStaff.find(person => person.kind === 'coach' && person.discipline === discipline); const rotation = staffDailySchedule(store.hiredStaff, discipline); return <div key={discipline} className="rounded-lg bg-slate-950/70 p-1.5"><div className="text-[9px] font-black text-indigo-200">{DISCIPLINE_INFO[discipline].name} · {coach?.name ?? 'Standard rotation'}</div><div className="mt-0.5 text-[8px] text-slate-400">{rotation.map(block => SCHEDULE_LABELS[block]).join(' · ')}</div></div>; })}</div></section>
 
     <section className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 p-3"><div className="flex gap-2"><UsersRound size={17} className="text-emerald-400" /><div><h3 className="text-sm font-black">Player Freedom & Sports</h3><p className="text-[10px] text-slate-400">Players choose breaks and sports around staff priorities. Outdoor time restores mood and energy.</p></div></div><div className="mt-2 space-y-1.5">{active.map(player => <div key={player.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/60 px-2 py-1.5"><span className="text-[11px] font-bold">{player.handle}</span><span className="text-[9px] text-emerald-300">{PERSONALITY_DETAILS[player.personality ?? 'grinder'].label} · {playerSportsPreference(player)}</span></div>)}</div></section>
 

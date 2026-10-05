@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getEquipmentModel, getEquipmentTier, nextEquipmentTier } from '../../core/facilities/equipmentProgression';
+import { getEquipmentModel, getEquipmentTier } from '../../core/facilities/equipmentProgression';
 import {
   ArrowUp,
   Flame,
@@ -26,12 +26,16 @@ import {
   Check,
   Building2,
   Layers,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { useGameStore, WallpaperStyle } from '../../core/store/useGameStore';
 import { useHouseSimulationStore } from '../../core/house/useHouseSimulation';
 import { HOUSE_ROOMS } from '../../core/engine/HouseLayout';
 import { FormulaService } from '../../core/engine/FormulaService';
 import { FacilityId } from '../../core/types/facility.types';
+import { getOccupiedStationIds } from '../../core/house/simulation';
+import { getNextRoomExpansion, getRoomStationSummary } from '../../core/facilities/roomExpansion';
 import { PlayerPortrait } from '../roster/PlayerPortrait';
 import { HouseCanvas3D } from './3d/HouseCanvas3D';
 import { formatCash } from '../../utils/formatCurrency';
@@ -104,7 +108,13 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
 
   const facility = facilities[roomId];
   const equipment = getEquipmentTier(facility.level);
-  const nextEquipment = nextEquipmentTier(facility.level);
+  const nextExpansion = getNextRoomExpansion(roomId, facility.level);
+  const stationSummary = getRoomStationSummary(
+    roomId,
+    facility.level,
+    facility.isUnlocked,
+    getOccupiedStationIds(agents),
+  );
   const roomMeta = HOUSE_ROOMS.find((r) => r.id === roomId)!;
   const activeRoster = roster.filter((p) => p.role !== 'inactive');
   const selectedPlayer = roster.find((p) => p.id === selectedPlayerId);
@@ -607,10 +617,62 @@ export const GamingHouse: React.FC<GamingHouseProps> = ({
               </div>
             </div>
 
-            {facility.isUnlocked && <div className="text-[10px] leading-tight" data-testid="equipment-tier">
-              <p className="font-bold" style={{ color: equipment.color }}>{equipment.name} · {getEquipmentModel(roomId, facility.level)}</p>
-              <p className="mt-1 text-slate-400">{nextEquipment ? `Next model at Lv ${nextEquipment.level}: ${getEquipmentModel(roomId, nextEquipment.level)}` : 'Maximum visual tier · Income upgrades continue'}</p>
-            </div>}
+            {facility.isUnlocked && (
+              <div className="grid grid-cols-2 gap-1.5 text-[9px]" data-testid="room-station-summary">
+                <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5">
+                  <Layers size={12} className="shrink-0 text-cyan-400" />
+                  <span className="truncate text-slate-400">Stations</span>
+                  <strong className="ml-auto shrink-0 text-slate-200">
+                    {stationSummary.active}/{stationSummary.capacity}
+                  </strong>
+                </div>
+                <div className="flex min-w-0 items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/70 px-2 py-1.5">
+                  <Users size={12} className="shrink-0 text-amber-400" />
+                  <span className="truncate text-slate-400">Occupied</span>
+                  <strong className="ml-auto shrink-0 text-slate-200">
+                    {stationSummary.occupied}/{stationSummary.active}
+                  </strong>
+                </div>
+              </div>
+            )}
+
+            {facility.isUnlocked && (
+              <div className="rounded-xl border border-cyan-900/70 bg-cyan-950/25 px-2.5 py-2" data-testid="room-expansion-preview">
+                <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider text-cyan-300">
+                  <Sparkles size={12} />
+                  <span>Next physical change</span>
+                  {nextExpansion && <span className="ml-auto text-slate-400">Level {nextExpansion.level}</span>}
+                </div>
+                {nextExpansion ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[9px] leading-tight text-slate-300">
+                    {nextExpansion.addedStations.length > 0 && (
+                      <span>
+                        +{nextExpansion.addedStations.length} station{nextExpansion.addedStations.length === 1 ? '' : 's'}: {nextExpansion.addedStations.slice(0, 2).map((station) => station.label).join(', ')}
+                        {nextExpansion.addedStations.length > 2 ? `, +${nextExpansion.addedStations.length - 2} more` : ''}
+                      </span>
+                    )}
+                    {nextExpansion.nextModel && (
+                      <span className="inline-flex items-center gap-1">
+                        {nextExpansion.addedStations.length > 0 && <span className="text-slate-600">·</span>}
+                        Equipment: {nextExpansion.currentModel}
+                        <ArrowRight size={10} className="text-cyan-400" />
+                        <strong className="text-white">{nextExpansion.nextModel}</strong>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-[9px] leading-tight text-slate-400">
+                    All station and equipment milestones reached. Further upgrades increase income only.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {facility.isUnlocked && (
+              <div className="text-[10px] leading-tight" data-testid="equipment-tier">
+                <p className="font-bold" style={{ color: equipment.color }}>{equipment.name} · {getEquipmentModel(roomId, facility.level)}</p>
+              </div>
+            )}
 
             {/* Upgrade & Unlock Action Row */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">

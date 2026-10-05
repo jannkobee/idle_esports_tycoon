@@ -7,7 +7,7 @@ import {
   StationPose,
   Vec,
 } from "../types/house.types";
-import { ProPlayer } from "../types/player.types";
+import { EsportsDiscipline, ProPlayer } from "../types/player.types";
 import {
   ACTIVITIES,
   calculateCapMultiplier,
@@ -47,6 +47,7 @@ export interface SimAgent {
   timer: number;
   energizedTimer: number;
   waitTimer: number;
+  discipline?: EsportsDiscipline;
   sportsPreference?: ProPlayer['sportsPreference'];
   speechBubble?: {
     text: string;
@@ -62,12 +63,6 @@ export interface HouseSimState {
   simTime: number;
   districtTier: number;
   rng: Rng;
-}
-
-export function houseAgentCapacity(facilities: Record<FacilityId, { isUnlocked: boolean; level: number }>): number {
-  const scrimLevel = facilities.scrim_lab?.isUnlocked ? facilities.scrim_lab.level : 0;
-  // The villa hosts eight pros. Level 6 opens a 12-rig multi-title wing.
-  return scrimLevel >= 6 ? 18 : 8;
 }
 
 const REVIEW_CHATTER = [
@@ -87,6 +82,24 @@ const BREAK_CHATTER = [
   "Ready for next scrim.",
   "Hydration check.",
 ];
+
+function getActivePlayers(roster: ProPlayer[]): ProPlayer[] {
+  return roster
+    .filter(player => player.role !== "inactive")
+    .sort((first, second) => {
+      if (first.role === "starter" && second.role !== "starter") return -1;
+      if (second.role === "starter" && first.role !== "starter") return 1;
+      return 0;
+    });
+}
+
+function getRotationQueuePosition(index: number): Vec {
+  const columns = 12;
+  return {
+    x: 1.1 + (index % columns) * 1.05,
+    y: 14.25 + Math.floor(index / columns) * 0.55,
+  };
+}
 
 export function getFacingBetween(from: Vec, to: Vec, current: Facing): Facing {
   const dx = to.x - from.x;
@@ -131,6 +144,7 @@ export function findBestStation(
 
   const candidates = HOUSE_STATIONS.filter((s) => {
     if (s.activity !== activity) return false;
+    if (activity === "practice" && agent.discipline && s.discipline !== agent.discipline) return false;
     if (s.id === 'patio_basketball_hoop' && preferredSport !== 'basketball') return false;
     if (s.id === 'outside_football_drills' && preferredSport !== 'football') return false;
     if (occupied.has(s.id)) return false;
@@ -288,7 +302,14 @@ export function assignAgentActivity(
         return;
       }
     }
-    // Waiting in place
+    agent.stationId = null;
+    agent.targetStationId = null;
+    agent.path = [];
+    const agentIndex = allAgents.findIndex(candidate => candidate.id === agent.id);
+    const queuePosition = getRotationQueuePosition(agentIndex >= 0 ? agentIndex : allAgents.length);
+    agent.x = queuePosition.x;
+    agent.y = queuePosition.y;
+    agent.pose = "stand";
     agent.mode = "waiting";
     agent.waitTimer = 2.0;
     return;
@@ -335,37 +356,21 @@ export function createHouseSim(
     Object.entries(facilities).map(([k, v]) => [k, v.level]),
   ) as Record<FacilityId, number>;
 
-  const activePlayers = roster
-    .filter((p) => p.role !== "inactive")
-    .sort((a, b) => {
-      if (a.role === "starter" && b.role !== "starter") return -1;
-      if (b.role === "starter" && a.role !== "starter") return 1;
-      return 0;
-    })
-    .slice(0, houseAgentCapacity(facilities));
+  const activePlayers = getActivePlayers(roster);
 
   const agents: SimAgent[] = [];
   const occupied = new Set<string>();
 
   activePlayers.forEach((player, idx) => {
-    // Initial placement: spread across practice desks (or streaming if unlocked)
-    let initialStation: HouseStation | undefined;
-    const practiceStations = HOUSE_STATIONS.filter(
-      (s) =>
-        s.activity === "practice" &&
-        !occupied.has(s.id) &&
-        isStationAvailable(s, unlocked, levels),
+    const availableStations = HOUSE_STATIONS.filter(station =>
+      !occupied.has(station.id) && isStationAvailable(station, unlocked, levels),
     );
+    const initialStation = availableStations.find(station =>
+      station.activity === "practice" && station.discipline === player.discipline,
+    ) ?? availableStations.find(station => station.activity !== "practice");
 
-    if (practiceStations.length > 0) {
-      initialStation = practiceStations[0];
-    } else {
-      initialStation = HOUSE_STATIONS.find(
-        (s) => !occupied.has(s.id) && isStationAvailable(s, unlocked, levels),
-      );
-    }
-
-    const pos = initialStation ? initialStation.seat : FRONT_DOOR_SPAWN;
+    const queuePosition = getRotationQueuePosition(idx);
+    const pos = initialStation ? initialStation.seat : queuePosition;
     const facing = initialStation ? initialStation.facing : "ne";
     const pose = initialStation ? initialStation.pose : "sit";
     const stationId = initialStation ? initialStation.id : null;
@@ -395,9 +400,14 @@ export function createHouseSim(
       activity: initialStation ? initialStation.activity : "practice",
       timer: 20 + agentRng.next() * 35, // staggered timer
       energizedTimer: 0,
-      waitTimer: 0,
+      waitTimer: initialStation ? 0 : (idx % 4) * 0.5,
+      discipline: player.discipline,
       sportsPreference: playerSportsPreference(player),
     });
+    if (!initialStation) {
+      agents[agents.length - 1].mode = "waiting";
+      agents[agents.length - 1].pose = "stand";
+    }
   });
 
   return {
@@ -433,18 +443,11 @@ export function syncHouseSim(
     districtTier,
   };
 
-  const activePlayers = roster
-    .filter((p) => p.role !== "inactive")
-    .sort((a, b) => {
-      if (a.role === "starter" && b.role !== "starter") return -1;
-      if (b.role === "starter" && a.role !== "starter") return 1;
-      return 0;
-    })
-    .slice(0, houseAgentCapacity(facilities));
+  const activePlayers = getActivePlayers(roster);
 
   const activeMap = new Map(activePlayers.map((p) => [p.id, p]));
 
-  // 1. Remove agents no longer in active top 8
+  // 1. Remove only players who are inactive or no longer on the roster.
   sim.agents = sim.agents.filter((a) => activeMap.has(a.id));
 
   // 2. Update existing agents & check if current station is still valid
@@ -453,18 +456,23 @@ export function syncHouseSim(
     agent.handle = player.handle;
     agent.name = player.name;
     agent.portraitIndex = player.portraitIndex;
+    agent.discipline = player.discipline;
     agent.sportsPreference = playerSportsPreference(player);
 
-    // Check station validity
-    if (agent.stationId) {
-      const station = getStationById(agent.stationId);
+    // Check the occupied or reserved station after facility/discipline changes.
+    const assignedStationId = agent.stationId ?? agent.targetStationId;
+    if (assignedStationId) {
+      const station = getStationById(assignedStationId);
+      const changedPracticeDiscipline = station?.activity === "practice" && station.discipline !== player.discipline;
       if (
         !station ||
-        !isStationAvailable(station, sim.unlockedFacilities, sim.facilityLevels, districtTier)
+        !isStationAvailable(station, sim.unlockedFacilities, sim.facilityLevels, districtTier) ||
+        changedPracticeDiscipline
       ) {
-        // Evacuate from locked station
         agent.stationId = null;
-        assignAgentActivity(agent, "break", sim.agents, context, sim.rng);
+        agent.targetStationId = null;
+        agent.path = [];
+        assignAgentActivity(agent, changedPracticeDiscipline ? "practice" : "break", sim.agents, context, sim.rng);
       }
     }
   }
@@ -498,6 +506,7 @@ export function syncHouseSim(
         timer: 1.0,
         energizedTimer: 0,
         waitTimer: 0,
+        discipline: player.discipline,
         sportsPreference: playerSportsPreference(player),
       };
 
